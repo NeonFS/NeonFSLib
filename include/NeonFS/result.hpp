@@ -26,8 +26,8 @@ namespace neonfs {
             return Result(T{}, std::make_optional(std::move(error)));
         }
 
-        bool is_ok() const { return !error_.has_value(); }
-        bool is_err() const { return error_.has_value(); }
+        [[nodiscard]] bool is_ok() const { return !error_.has_value(); }
+        [[nodiscard]] bool is_err() const { return error_.has_value(); }
 
         T& unwrap() {
             if (is_err()) {
@@ -110,8 +110,8 @@ namespace neonfs {
             return Result<void>(std::make_optional(std::move(error)));
         }
 
-        bool is_ok() const { return !error_.has_value(); }
-        bool is_err() const { return error_.has_value(); }
+        [[nodiscard]] bool is_ok() const { return !error_.has_value(); }
+        [[nodiscard]] bool is_err() const { return error_.has_value(); }
 
         void unwrap() const {
             if (is_err()) {
