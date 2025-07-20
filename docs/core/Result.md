@@ -95,4 +95,4 @@ if (res.is_err()) {
 
 ---
 
-For more examples and integration details, see the [Usage](Usage.md) documentation.
+For more examples and integration details, see the [Result Usage](ResultUsage.md) documentation.
