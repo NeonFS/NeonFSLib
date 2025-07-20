@@ -26,15 +26,30 @@ This avoids exceptions and unsafe nulls or special values, forcing callers to ha
 `Result<T>` wraps either:
 
 - A **value** of type `T` indicating success, or
-- An **error string** describing the failure.
+- Or an `Error` struct:
 
-It provides:
+```cpp
+struct Error {
+    std::string message;
+    int code = 0;
+};
+```
+> We use a real Error struct instead of just strings to provide structured and machine-readable error information.
 
-- `ok(value)` and `err(message)` static methods to create results.
-- Methods like `is_ok()`, `is_err()`, `unwrap()`, and `unwrap_err()` to query and extract values.
-- Functional helpers like `and_then()`, `map()`, and `or_else()` to compose operations safely.
-- A specialization `Result<void>` for functions that only succeed or fail without a return value.
+Key Methods:
+- `Result<T>::ok(value)` — returns a success result.
 
+- `Result<T>::err("message", errno)` — returns a failure with error message and code.
+- `is_ok()` / `is_err()` — query the state.
+- `unwrap()` / `unwrap_err()` — extract the result or error.
+- `try_unwrap()` — returns the value as an optional.
+- `and_then(f)` — chains operations that may return Result.
+- Specialized for void as well:
+
+```cpp
+Result<void>::ok()
+Result<void>::err("something went wrong", 123)
+```
 ---
 
 ## When to Use `Result<T>`
@@ -51,13 +66,13 @@ Use `Result<T>` in any function that can fail, especially:
 ```cpp
 Result<std::string> read_file(const std::string& path);
 
-auto result = read_file("config.json");
-if (result.is_err()) {
-    // Handle error
-    std::cerr << "Failed to read file: " << result.unwrap_err() << "\n";
+auto res = read_file("config.txt");
+if (res.is_err()) {
+    Error e = res.unwrap_err();
+    std::cerr << "Error reading file: " << e.message << " (code " << e.code << ")\n";
 } else {
-    std::string contents = result.unwrap();
-    // Use contents...
+    std::string data = res.unwrap();
+    // use data...
 }
 ```
 
