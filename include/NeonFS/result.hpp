@@ -6,37 +6,46 @@
 
 namespace neonfs {
 
+    struct Error {
+        std::string message;
+        int code = 0;
+    };
+
     template<typename T>
     class Result {
     public:
         static Result<T> ok(T value) {
-            return Result(std::move(value), std::string{});
+            return Result(std::move(value), std::nullopt);
         }
 
-        static Result<T> err(std::string error) {
-            return Result(T{}, std::move(error));
+        static Result<T> err(const std::string& message, const int code = 0) {
+            return Result<T>(T{}, std::make_optional(Error{message, code}));
         }
 
-        bool is_ok() const { return error_.empty(); }
-        bool is_err() const { return !error_.empty(); }
+        static Result<T> err(Error error) {
+            return Result(T{}, std::make_optional(std::move(error)));
+        }
+
+        bool is_ok() const { return !error_.has_value(); }
+        bool is_err() const { return error_.has_value(); }
 
         T& unwrap() {
             if (is_err()) {
-                throw std::runtime_error("Attempted to unwrap error result: " + error_);
+                throw std::runtime_error("Attempted to unwrap error result: " + error_->message);
             }
             return value_;
         }
 
         const T& unwrap() const {
             if (is_err()) {
-                throw std::runtime_error("Attempted to unwrap error result: " + error_);
+                throw std::runtime_error("Attempted to unwrap error result: " + error_->message);
             }
             return value_;
         }
 
         T unwrap_move() {
             if (is_err()) {
-                throw std::runtime_error("Attempted to unwrap error result: " + error_);
+                throw std::runtime_error("Attempted to unwrap error result: " + error_->message);
             }
             return std::move(value_);
         }
@@ -46,18 +55,18 @@ namespace neonfs {
             return std::ref(value_);
         }
 
-        const std::string& unwrap_err() const { return error_; }
+        [[nodiscard]] const std::optional<Error>& unwrap_err() const { return error_; }
 
         template<typename F>
         auto and_then(F&& f) {
             if (is_err()) return Result<std::invoke_result_t<F, T>>::err(error_);
-            return f(value_);
+            return std::forward<F>(f)(value_);
         }
 
         template<typename F>
         auto map(F&& f) {
             if (is_err()) return Result<std::invoke_result_t<F, T>>::err(error_);
-            return Result<std::invoke_result_t<F, T>>::ok(f(value_));
+            return Result<std::invoke_result_t<F, T> >::ok(std::forward<F>(f)(value_));
         }
 
         template<typename F>
@@ -66,12 +75,23 @@ namespace neonfs {
             return f(error_);
         }
 
+        template<typename U>
+        bool contains(const U& value) const {
+            return is_ok() && value_ == value;
+        }
+
+        // Transform to std::optional
+        std::optional<T> to_optional() const {
+            if (is_err()) return std::nullopt;
+            return value_;
+        }
+
     private:
-        Result(T value, std::string error)
+        Result(T value, std::optional<Error> error)
             : value_(std::move(value)), error_(std::move(error)) {}
 
         T value_;
-        std::string error_;
+        std::optional<Error> error_;
     };
 
     // Specialization for Result<void>
@@ -79,28 +99,42 @@ namespace neonfs {
     class Result<void> {
     public:
         static Result<void> ok() {
-            return Result<void>(std::string{});
+            return Result<void>(std::nullopt);
         }
 
-        static Result<void> err(std::string error) {
-            return Result<void>(std::move(error));
+        static Result<void> err(const std::string& message, const int code = 0) {
+            return Result<void>(std::make_optional(Error{message, code}));
         }
 
-        bool is_ok() const { return error_.empty(); }
-        bool is_err() const { return !error_.empty(); }
+        static Result<void> err(Error error) {
+            return Result<void>(std::make_optional(std::move(error)));
+        }
+
+        bool is_ok() const { return !error_.has_value(); }
+        bool is_err() const { return error_.has_value(); }
 
         void unwrap() const {
             if (is_err()) {
-                throw std::runtime_error("Attempted to unwrap error result: " + error_);
+                throw std::runtime_error("Attempted to unwrap error result: " + error_->message);
             }
         }
 
-        const std::string& unwrap_err() const { return error_; }
+        [[nodiscard]] bool try_unwrap() const {
+            return !is_err();
+        }
+
+        [[nodiscard]] const std::optional<Error>& unwrap_err() const { return error_; }
 
         template<typename F>
         auto and_then(F&& f) {
             if (is_err()) return Result<std::invoke_result_t<F>>::err(error_);
-            return f();
+            return std::forward<F>(f)();
+        }
+
+        template<typename F>
+        auto map(F&& f) {
+            if (is_err()) return Result<std::invoke_result_t<F>>::err(error_);
+            return Result<std::invoke_result_t<F>>::ok(f());
         }
 
         template<typename F>
@@ -110,9 +144,9 @@ namespace neonfs {
         }
 
     private:
-        explicit Result(std::string error)
+        explicit Result(std::optional<Error> error)
             : error_(std::move(error)) {}
 
-        std::string error_;
+        std::optional<Error> error_;
     };
 } // namespace neonfs
