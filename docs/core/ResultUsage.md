@@ -107,6 +107,33 @@ auto fallback_result = read_file(path).or_else([](const Error& err) {
 });
 ```
 
+### `contains`
+
+Returns `true` if the result is ok and the stored value equals value.
+
+```cpp
+Result<int> r = Result<int>::ok(42);
+if (r.contains(42)) {
+    // Yes, the value matches.
+}
+```
+
+Useful for direct comparisons without calling `unwrap()`.
+
+### `to_optional`
+
+Converts the `Result<T>` to `std::optional<T>`.
+
+```cpp
+std::optional<int> opt = r.to_optional();
+```
+
+If `ok`, returns the value inside an `optional`.
+
+If `err`, returns `std::nullopt`.
+
+This is especially useful when working with APIs that expect optional.
+
 ---
 
 ## Integration with Electron Native Addon
