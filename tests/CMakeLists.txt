@@ -1,25 +1,21 @@
-# Create test executable
-add_executable(result_tests result_tests.cpp)
-
-# Link with main library and any test dependencies
-target_link_libraries(result_tests PRIVATE
-        NeonFSLib
+include(FetchContent)
+FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG        v1.17.0
 )
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
-# Add test to CTest
-add_test(NAME ResultTests COMMAND result_tests)
+include(GoogleTest)
 
-# Optional: Add Google Test if you want more advanced testing
-option(ENABLE_GTEST "Enable Google Test" OFF)
-if(ENABLE_GTEST)
-    include(FetchContent)
-    FetchContent_Declare(
-            googletest
-            GIT_REPOSITORY https://github.com/google/googletest.git
-            GIT_TAG release-1.12.1
-    )
-    FetchContent_MakeAvailable(googletest)
+# Function to register test modules
+function(register_test name)
+    add_executable(${name} ${ARGN})
+    target_link_libraries(${name} PRIVATE NeonFSLib GTest::gtest_main)
+    gtest_discover_tests(${name})
+endfunction()
 
-    target_link_libraries(result_tests PRIVATE GTest::GTest GTest::Main)
-    gtest_discover_tests(result_tests)
-endif()
+# Register test files
+register_test(core_result_tests core/result_tests.cpp)
