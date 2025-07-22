@@ -204,13 +204,18 @@ namespace neonfs {
 
         template<typename FOk, typename FErr>
         auto match(FOk&& ok_fn, FErr&& err_fn) {
+            using OkResult = decltype(ok_fn());
+            using ErrResult = decltype(err_fn(std::declval<Error>()));
+            static_assert(std::is_same_v<OkResult, ErrResult>,
+                "Both handlers must return the same type");
+
             return std::visit(
-                [&](auto&& arg) {
+                [&](auto&& arg) -> OkResult {  // Explicit return type
                     using Arg = std::decay_t<decltype(arg)>;
                     if constexpr (std::is_same_v<Arg, std::monostate>) {
                         return std::forward<FOk>(ok_fn)();
                     } else {
-                        return std::forward<FErr>(err_fn)(arg);
+                        return std::forward<FErr>(err_fn)(std::forward<decltype(arg)>(arg));
                     }
                 },
                 data_

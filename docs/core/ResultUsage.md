@@ -14,11 +14,11 @@ All operations start by creating a `Result` to represent either success (`ok`) o
 
 ```cpp
 // Success with a value
-auto success = Result ::ok(100);
+auto success = Result<int>::ok(100);
 // Success with no value
-auto void_success = Result ::ok();
+auto void_success = Result<void>::ok();
 // Failure with a message and system error code
-auto failure = Result ::err("Could not read from socket", errno);
+auto failure = Result<std::vector<uint8_t>>::err("Could not read from socket", errno);
 ```
 
 ## Returning and Handling a `Result`
@@ -60,7 +60,7 @@ result.match(
 For `Result<void>`, the `ok` lambda takes no arguments:
 
 ```cpp
-auto void_result = Result ::err("Disk is full");
+auto void_result = Result<void>::err("Disk is full");
 void_result.
     match(
         [](){
@@ -178,7 +178,7 @@ Result<std::string> descriptive_error = read_file("nonexistent.txt")
 
 ```cpp
 // Chain reading and parsing
-Result<Config> config = read_file("config.json")
+Result<Config> config = read_config_file("config.json")
     .and_then(parse_config); // parse_config returns Result<Config>
 
 // Try reading a primary file, then a backup
