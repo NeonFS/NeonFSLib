@@ -3,13 +3,9 @@
 #include <stdexcept>
 #include <variant>
 #include <string>
+#include "types.h"
 
 namespace neonfs {
-
-    struct Error {
-        std::string message;
-        int code = 0;
-    };
 
     template<typename T>
     class Result {
