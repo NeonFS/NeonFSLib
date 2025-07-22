@@ -15,15 +15,15 @@ namespace neonfs {
     class Result {
     public:
         static Result<T> ok(T value) {
-            return Result(std::move(value));
+            return Result<T>(std::move(value));
         }
 
         static Result<T> err(const std::string& message, const int code = 0) {
-            return Result<T>(std::make_optional(Error{message, code}));
+            return Result<T>(Error{message, code});
         }
 
         static Result<T> err(Error error) {
-            return Result(std::make_optional(std::move(error)));
+            return Result<T>(std::move(error));
         }
 
         [[nodiscard]] bool is_ok() const { return std::holds_alternative<T>(data_);  }
@@ -59,13 +59,18 @@ namespace neonfs {
 
         template<typename FOk, typename FErr>
         auto match(FOk&& ok_fn, FErr&& err_fn) {
+            using OkResult = decltype(ok_fn(std::declval<T>()));
+            using ErrResult = decltype(err_fn(std::declval<Error>()));
+            static_assert(std::is_same_v<OkResult, ErrResult>,
+                "Both handlers must return the same type");
+
             return std::visit(
-                [&](auto&& arg) {
+                [&](auto&& arg) -> OkResult {  // Explicit return type
                     using Arg = std::decay_t<decltype(arg)>;
                     if constexpr (std::is_same_v<Arg, T>) {
-                        return std::forward<FOk>(ok_fn)(arg);
+                        return std::forward<FOk>(ok_fn)(std::forward<decltype(arg)>(arg));
                     } else {
-                        return std::forward<FErr>(err_fn)(arg);
+                        return std::forward<FErr>(err_fn)(std::forward<decltype(arg)>(arg));
                     }
                 },
                 data_
