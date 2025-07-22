@@ -105,8 +105,18 @@ namespace neonfs {
 
         template<typename F>
         auto map(F&& f) {
-            if (is_err()) return Result<std::invoke_result_t<F, T>>::err(std::get<Error>(data_));
-            return Result<std::invoke_result_t<F, T> >::ok(std::forward<F>(f)(std::get<T>(data_)));
+            using ResultType = std::invoke_result_t<F, T>;
+
+            if (is_err()) {
+                return Result<ResultType>::err(std::get<Error>(data_));
+            }
+
+            if constexpr (std::is_void_v<ResultType>) {
+                std::forward<F>(f)(std::get<T>(data_));
+                return Result<void>::ok();
+            } else {
+                return Result<ResultType>::ok(std::forward<F>(f)(std::get<T>(data_)));
+            }
         }
 
         template<typename F>
@@ -204,14 +214,24 @@ namespace neonfs {
 
         template<typename F>
         auto and_then(F&& f) {
-            if (is_err()) return Result<std::invoke_result_t<F>>::err(std::get<Error>(data_));
+            if (is_err()) return std::invoke_result_t<F>::err(std::get<Error>(data_));
             return std::forward<F>(f)();
         }
 
         template<typename F>
         auto map(F&& f) {
-            if (is_err()) return Result<std::invoke_result_t<F>>::err(std::get<Error>(data_));
-            return Result<std::invoke_result_t<F>>::ok(f());
+            using ResultType = std::invoke_result_t<F>;
+
+            if (is_err()) {
+                return Result<ResultType>::err(std::get<Error>(data_));
+            }
+
+            if constexpr (std::is_void_v<ResultType>) {
+                std::forward<F>(f)();
+                return Result<void>::ok();
+            } else {
+                return Result<ResultType>::ok(std::forward<F>(f)());
+            }
         }
 
         template<typename F>
