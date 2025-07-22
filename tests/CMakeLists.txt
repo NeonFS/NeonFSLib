@@ -19,3 +19,4 @@ endfunction()
 
 # Register test files
 register_test(core_result_tests core/result_tests.cpp)
+register_test(secure_allocator_tests core/secure_allocator_tests.cpp)

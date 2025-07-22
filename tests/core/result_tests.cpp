@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 #include <NeonFS/core/result.hpp>
 #include <cassert>
-#include <iostream>
 #include <string>
 
 using namespace neonfs;
