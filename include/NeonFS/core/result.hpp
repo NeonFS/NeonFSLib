@@ -14,7 +14,7 @@ namespace neonfs {
             return Result<T>(std::move(value));
         }
 
-        static Result<T> err(const std::string& message, const int code = 0) {
+        static Result<secure_vector<uint8_t>> err(const std::string &message, const int code = 0) {
             return Result<T>(Error{message, code});
         }
 
