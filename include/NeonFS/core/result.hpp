@@ -55,7 +55,19 @@ namespace neonfs {
             return std::ref(value_);
         }
 
-        [[nodiscard]] const std::optional<Error>& unwrap_err() const { return error_; }
+        [[nodiscard]] const Error& unwrap_err() const {
+            if (is_ok()) {
+                throw std::runtime_error("Attempted to unwrap_err on ok result");
+            }
+            return *error_;
+        }
+
+        [[nodiscard]] const Error& expect_err(const std::string& msg) const {
+            if (is_ok()) {
+                throw std::runtime_error(msg);
+            }
+            return *error_;
+        }
 
         template<typename F>
         auto and_then(F&& f) {
@@ -72,7 +84,7 @@ namespace neonfs {
         template<typename F>
         Result<T> or_else(F&& f) {
             if (is_ok()) return *this;
-            return f(error_);
+            return f(*error_);  // Dereference the optional (we know it has value)
         }
 
         template<typename U>
@@ -123,7 +135,19 @@ namespace neonfs {
             return !is_err();
         }
 
-        [[nodiscard]] const std::optional<Error>& unwrap_err() const { return error_; }
+        [[nodiscard]] const Error& unwrap_err() const {
+            if (is_ok()) {
+                throw std::runtime_error("Attempted to unwrap_err on ok result");
+            }
+            return *error_;
+        }
+
+        [[nodiscard]] const Error& expect_err(const std::string& msg) const {
+            if (is_ok()) {
+                throw std::runtime_error(msg);
+            }
+            return *error_;
+        }
 
         template<typename F>
         auto and_then(F&& f) {
@@ -140,7 +164,7 @@ namespace neonfs {
         template<typename F>
         Result<void> or_else(F&& f) {
             if (is_ok()) return *this;
-            return f(error_);
+            return f(*error_);  // Dereference the optional (we know it has value)
         }
 
     private:

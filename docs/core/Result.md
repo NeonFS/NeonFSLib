@@ -1,5 +1,10 @@
 # Result<T> — Error Handling Wrapper
 
+---
+namespace:
+- `neonfs`
+---
+
 ## Why `Result<T>`?
 
 `Result<T>` is a modern C++ approach to explicit error handling inspired by Rust's `Result` type. It allows functions that may fail to return either:
@@ -38,10 +43,10 @@ struct Error {
 
 Key Methods:
 - `Result<T>::ok(value)` — returns a success result.
-
 - `Result<T>::err("message", errno)` — returns a failure with error message and code.
 - `is_ok()` / `is_err()` — query the state.
 - `unwrap()` / `unwrap_err()` — extract the result or error.
+- `expect_err("message")` — unwraps an error, throwing a custom message if the result is ok.
 - `try_unwrap()` — returns the value as an optional.
 - `and_then(f)` — chains operations that may return Result.
 - Specialized for void as well:
@@ -90,7 +95,7 @@ if (res.is_err()) {
 ## Additional Notes
 
 * `Result<void>` specialization handles operations with no meaningful return value.
-* Exceptions are thrown only when `unwrap()` is misused on an error result.
+* Exceptions are thrown only when `unwrap()`/`unwrap_err()` is misused.
 * The API supports functional chaining for cleaner, concise code.
 
 ---

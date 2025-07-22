@@ -107,6 +107,19 @@ auto fallback_result = read_file(path).or_else([](const Error& err) {
 });
 ```
 
+### `expect_err`
+
+Unwraps an error, throwing an exception with a custom message if the result is `ok`.
+
+```cpp
+Result<void> res = Result<void>::ok();
+try {
+    res.expect_err("Expected an error here!");
+} catch (const std::runtime_error& e) {
+    std::cout << e.what() << std::endl; // "Expected an error here!"
+}
+```
+
 ### `contains`
 
 Returns `true` if the result is ok and the stored value equals value.
