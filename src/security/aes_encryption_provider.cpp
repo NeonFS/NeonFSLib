@@ -111,3 +111,11 @@ neonfs::Result<neonfs::secure_vector<uint8_t>> neonfs::security::AESEncryptionPr
 
     return Result<secure_vector<uint8_t>>::ok(plaintext);
 }
+
+size_t neonfs::security::AESEncryptionProvider::iv_size() const {
+    return 12;
+}
+
+size_t neonfs::security::AESEncryptionProvider::tag_size() const {
+    return 16;
+}
