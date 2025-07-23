@@ -3,9 +3,24 @@
 neonfs::security::AESGCMCtxPool::Handle::Handle(std::shared_ptr<AESGCMCtxPool> p, std::unique_ptr<AESGCMCtx> c): pool(std::move(p)), ctx(std::move(c)) {}
 
 neonfs::security::AESGCMCtxPool::Handle::~Handle() {
-    if (ctx && pool) {
+    reset();
+}
+
+void neonfs::security::AESGCMCtxPool::Handle::reset() {
+    if (pool && ctx) {
         pool->release(std::move(ctx));
+        pool.reset(); // Clear the pool reference
     }
+    ctx.reset(); // Double-clear for safety
+}
+
+neonfs::security::AESGCMCtxPool::Handle &neonfs::security::AESGCMCtxPool::Handle::operator=(Handle &&other) noexcept {
+    if (this != &other) {
+        reset(); // Release current context first
+        pool = std::move(other.pool);
+        ctx = std::move(other.ctx);
+    }
+    return *this;
 }
 
 neonfs::security::AESGCMCtx* neonfs::security::AESGCMCtxPool::Handle::operator->() const {
@@ -44,4 +59,9 @@ void neonfs::security::AESGCMCtxPool::release(std::unique_ptr<AESGCMCtx> ctx) {
     ctx->reset();  // reset ctx state before returning to pool
     pool.push(std::move(ctx));
     condVar.notify_one();
+}
+
+size_t neonfs::security::AESGCMCtxPool::availableCount() {
+    std::lock_guard<std::mutex> lock(mutex);
+    return pool.size();
 }

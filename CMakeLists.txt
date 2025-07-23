@@ -9,7 +9,10 @@ set(OPENSSL_ROOT_DIR "C:/Program Files/OpenSSL-Win64")
 set(OPENSSL_USE_STATIC_LIBS TRUE)
 find_package(OpenSSL REQUIRED)
 
-add_library(NeonFSLib STATIC NeonFSLib.cpp)
+add_library(NeonFSLib STATIC
+        src/security/aes_gcm_ctx.cpp
+        src/security/aes_gcm_ctx_pool.cpp
+        NeonFSLib.cpp)
 
 # Include directories
 target_include_directories(NeonFSLib PUBLIC

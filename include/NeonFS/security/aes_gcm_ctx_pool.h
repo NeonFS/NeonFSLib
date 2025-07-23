@@ -17,15 +17,18 @@ namespace neonfs::security {
             AESGCMCtx* operator->() const;
             AESGCMCtx& operator*() const;
 
+            void reset();
+
 
             Handle(const Handle&) = delete;
             Handle& operator=(const Handle&) = delete;
             Handle(Handle&&) = default;
-            Handle& operator=(Handle&&) = default;
+            Handle& operator=(Handle&& other) noexcept;
         };
 
         AESGCMCtxPool(size_t maxSize);
         Handle acquire();
+        size_t availableCount();
     private:
         void release(std::unique_ptr<AESGCMCtx> ctx);
 
