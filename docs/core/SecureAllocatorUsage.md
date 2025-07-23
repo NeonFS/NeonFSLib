@@ -4,6 +4,36 @@ This document explains how to effectively use the `neonfs::secure_allocator<T>` 
 
 ---
 
+## Prerequisite: Heap Initialization
+
+**WARNING:** Before you can use any secure container (`secure_bytes`, `secure_string`, etc.), you **must** initialize the OpenSSL secure heap. This is a one-time operation that should happen at application startup.
+
+Failure to initialize the heap will result in a `std::runtime_error` or `std::bad_alloc` when you attempt to create a secure container.
+
+### How to Initialize
+Place the following call at the beginning of your `main()` function:
+
+```cpp
+#include <NeonFS/core/types.h> // Provides initialize_secure_heap
+#include <iostream>
+
+int main() {
+    try {
+        // Initialize a 64MB secure heap. This size must be large
+        // enough for your application's peak secure memory needs.
+        neonfs::initialize_secure_heap(64 * 1024 * 1024);
+    } catch (const std::exception& e) {
+        std::cerr << "Fatal Error: " << e.what() << std::endl;
+        return 1;
+    }
+
+    // --- Your application logic can now safely use secure containers ---
+    
+    return 0;
+}
+```
+---
+
 ## Declaring a Secure Container
 
 The primary use case for `secure_allocator<T>` is in STL containers that hold sensitive data.
@@ -134,6 +164,7 @@ using secure_int_list = std::list<int, neonfs::secure_allocator<int>>;
 
 ## Best Practices
 
+*   **Initialize the secure heap** in `main()` before any other operations.
 *   **Use type aliases** like `secure_bytes` or `secure_string` to improve code readability and safety.
 *   **Use for any in-memory data that is security-critical**: keys, passwords, tokens, etc.
 *   **Do not use** with non-trivially-destructible types (e.g., classes with custom destructors, `std::unique_ptr`).

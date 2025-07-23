@@ -26,6 +26,45 @@ It provides a standard STL-compatible interface, making it easy to integrate int
 
 ---
 
+## Heap Initialization and Management
+
+**WARNING:** The `secure_allocator` **requires** the OpenSSL secure heap to be initialized before it can be used. All allocations will fail until the heap is created.
+
+You must call `neonfs::initialize_secure_heap()` once at application startup.
+
+### Initialization
+Place this call at the beginning of your `main` function:
+
+```cpp
+#include <NeonFS/core/types.h> // Or secure_allocator.hpp
+
+int main() {
+    try {
+        // Initialize a 64MB secure heap. Choose a size that meets
+        // your application's peak demand for secure memory.
+        neonfs::initialize_secure_heap(64 * 1024 * 1024);
+    } catch (const std::exception& e) {
+        // Handle initialization failure
+        return 1;
+    }
+    
+    // ... rest of application ...
+    
+    return 0;
+}
+```
+
+The size of the heap is a hard limit on the total amount of secure memory your application can have allocated at any one time. You must size it to accommodate the peak concurrent usage of all `secure_buffer` instances and other secure allocations.
+
+### Cleanup
+For a clean shutdown, you can optionally call `cleanup_secure_heap()` after all secure memory has been released. The function will throw an exception if any secure memory is still in use, helping to detect leaks.
+
+```cpp
+// At the end of your application
+neonfs::cleanup_secure_heap();
+```
+
+---
 ## How Does It Work?
 
 `secure_allocator<T>` is a drop-in allocator with STL-style semantics (i.e., via `std::allocator_traits`) that uses OpenSSL's secure heap under the hood.
