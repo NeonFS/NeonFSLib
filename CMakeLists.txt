@@ -12,6 +12,7 @@ find_package(OpenSSL REQUIRED)
 add_library(NeonFSLib STATIC
         src/security/aes_gcm_ctx.cpp
         src/security/aes_gcm_ctx_pool.cpp
+        src/security/aes_encryption_provider.cpp
         NeonFSLib.cpp)
 
 # Include directories

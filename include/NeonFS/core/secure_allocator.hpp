@@ -4,9 +4,10 @@
 #include <limits>
 #include <new>
 #include <type_traits>
+#include <iostream>
 
 namespace neonfs {
-	inline void initialize_secure_heap(const size_t size = 1024 * 1024, const size_t min_allocation = 32) {
+	inline void initialize_secure_heap(const size_t size = 64 * 1024 * 1024, const size_t min_allocation = 64) {
 		if (!CRYPTO_secure_malloc_initialized()) {
 			if (!CRYPTO_secure_malloc_init(size, min_allocation)) {
 				throw std::runtime_error("Failed to initialize OpenSSL secure heap");
@@ -50,10 +51,15 @@ namespace neonfs {
 
 			if (n > max_size()) throw std::bad_alloc();
 
+			if (!CRYPTO_secure_malloc_initialized()) throw std::runtime_error("OpenSSL secure heap not initialized");
+
 			const std::size_t total_bytes = n * sizeof(T);
 
 			void* p = OPENSSL_secure_malloc(total_bytes);
-			if (!p) throw std::bad_alloc();
+			if (!p) {
+				std::cout << "Failed to allocate " << total_bytes << " bytes" << std::endl;
+				throw std::bad_alloc();
+			}
 
 			return static_cast<T*>(p);
 		}
