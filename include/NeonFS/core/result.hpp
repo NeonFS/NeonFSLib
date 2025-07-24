@@ -10,15 +10,15 @@ namespace neonfs {
     template<typename T>
     class Result {
     public:
-        static Result<T> ok(T value) {
+        [[nodiscard]] static Result<T> ok(T value) {
             return Result<T>(std::move(value));
         }
 
-        static Result<T> err(const std::string &message, const int code = 0) {
+        [[nodiscard]] static Result<T> err(const std::string &message, const int code = 0) {
             return Result<T>(Error{message, code});
         }
 
-        static Result<T> err(Error error) {
+        [[nodiscard]] static Result<T> err(Error error) {
             return Result<T>(std::move(error));
         }
 
@@ -138,7 +138,7 @@ namespace neonfs {
         }
 
         // Transform to std::optional
-        std::optional<T> to_optional() const {
+        [[nodiscard]] std::optional<T> to_optional() const {
             if (is_err()) return std::nullopt;
             return std::get<T>(data_);
         }
@@ -154,15 +154,15 @@ namespace neonfs {
     template<>
     class Result<void> {
     public:
-        static Result<void> ok() {
+        [[nodiscard]] static Result<void> ok() {
             return Result<void>(std::monostate{});
         }
 
-        static Result<void> err(const std::string& message, const int code = 0) {
+        [[nodiscard]] static Result<void> err(const std::string& message, const int code = 0) {
             return Result<void>(Error{message, code});
         }
 
-        static Result<void> err(Error error) {
+        [[nodiscard]] static Result<void> err(Error error) {
             return Result<void>(std::move(error));
         }
 
