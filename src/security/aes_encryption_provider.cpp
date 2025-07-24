@@ -125,7 +125,7 @@ neonfs::Result<neonfs::secure_bytes> neonfs::security::AESEncryptionProvider::de
 
     // Decrypt the ciphertext
     if (1 != EVP_DecryptUpdate(ctx_handle->get(), plaintext.data(), &len, cipher.data(), static_cast<int>(cipher.size()))) {
-        throw Result<secure_bytes>::err("Decryption failed during EVP_DecryptUpdate.");
+        return Result<secure_bytes>::err("Decryption failed during EVP_DecryptUpdate.");
     }
     plaintext_len = len;
 
