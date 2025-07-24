@@ -2,7 +2,7 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
-neonfs::security::AESEncryptionProvider::AESEncryptionProvider(const secure_bytes &&master_key, const size_t poolMaxSize = 5): contextPool_(std::make_shared<AESGCMCtxPool>(poolMaxSize)), key_(master_key) {
+neonfs::security::AESEncryptionProvider::AESEncryptionProvider(const secure_bytes &&master_key, const size_t poolMaxSize = 5): contextPool_(AESGCMCtxPool::create(poolMaxSize)), key_(master_key) {
     if (key_.size() != 32) throw std::invalid_argument("Key must be 256 bits (32 bytes).");
 }
 

@@ -27,6 +27,7 @@ namespace neonfs::security {
         };
 
         AESGCMCtxPool(size_t maxSize);
+        static std::shared_ptr<AESGCMCtxPool> create(size_t maxSize);
         Handle acquire();
         size_t availableCount();
     private:

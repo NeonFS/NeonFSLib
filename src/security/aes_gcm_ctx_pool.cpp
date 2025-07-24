@@ -33,6 +33,10 @@ neonfs::security::AESGCMCtx& neonfs::security::AESGCMCtxPool::Handle::operator*(
 
 neonfs::security::AESGCMCtxPool::AESGCMCtxPool(size_t maxSize) : maxPoolSize(maxSize) {}
 
+std::shared_ptr<neonfs::security::AESGCMCtxPool> neonfs::security::AESGCMCtxPool::create(size_t maxSize) {
+    return std::make_shared<AESGCMCtxPool>(maxSize);
+}
+
 neonfs::security::AESGCMCtxPool::Handle neonfs::security::AESGCMCtxPool::acquire() {
     std::unique_lock<std::mutex> lock(mutex);
     if (!pool.empty()) {
