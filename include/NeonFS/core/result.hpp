@@ -129,7 +129,7 @@ namespace neonfs {
         template<typename F>
         Result<T> or_else(F&& f) {
             if (is_ok()) return *this;
-            return f(std::get<Error>(data_));  // Dereference the optional (we know it has value)
+            return f(std::get<Error>(data_));  // Get the error from the variant (we know it has value)
         }
 
         template<typename U>

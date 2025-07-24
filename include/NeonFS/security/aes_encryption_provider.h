@@ -11,7 +11,7 @@ namespace neonfs::security {
     public:
         // Enforce move-only master_key in constructor
         // explicit prevents accidental conversions (from other types like std::vector<uint8_t>).
-        explicit AESEncryptionProvider(const secure_bytes &&master_key, const size_t poolMaxSize);
+        explicit AESEncryptionProvider(secure_bytes &&master_key, const size_t poolMaxSize);
 
         Result<secure_bytes> encrypt(const secure_bytes& plain, secure_bytes& outIV, secure_bytes& outTag) override;
         Result<secure_bytes> decrypt(const secure_bytes& cipher, const secure_bytes& iv, secure_bytes& tag) override;
