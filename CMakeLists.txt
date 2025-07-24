@@ -13,6 +13,7 @@ add_library(NeonFSLib STATIC
         src/security/aes_gcm_ctx.cpp
         src/security/aes_gcm_ctx_pool.cpp
         src/security/aes_encryption_provider.cpp
+        src/security/key_manager.cpp
         NeonFSLib.cpp)
 
 # Include directories

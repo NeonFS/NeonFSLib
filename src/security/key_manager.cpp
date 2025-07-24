@@ -46,7 +46,7 @@ neonfs::Result<neonfs::secure_bytes> neonfs::security::KeyManager::derive_key(co
     return Result<secure_bytes>::ok(derived_key);
 }
 
-neonfs::Result<bool> neonfs::security::KeyManager::verify_password(const secure_bytes &password, const secure_bytes &salt, const secure_bytes &expected_derived_key, size_t derived_key_size, const KeyDerivationAlgorithm algorithm = KeyDerivationAlgorithm::PBKDF2_HMAC_SHA256 unsigned iterations = 100000) {
+neonfs::Result<bool> neonfs::security::KeyManager::verify_password(const secure_bytes &password, const secure_bytes &salt, const secure_bytes &expected_derived_key, size_t derived_key_size, const KeyDerivationAlgorithm algorithm = KeyDerivationAlgorithm::PBKDF2_HMAC_SHA256, unsigned iterations = 100000) {
     // Input validation
     if (password.empty()) {
         return Result<bool>::err("Password cannot be empty");
