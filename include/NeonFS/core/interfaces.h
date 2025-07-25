@@ -21,4 +21,14 @@ namespace neonfs {
         virtual size_t iv_size() const = 0;
         virtual size_t tag_size() const = 0;
     };
+
+    class IStorageProvider {
+    public:
+        virtual ~IStorageProvider() = default;
+
+        virtual Result<std::vector<uint8_t>> readBlock(uint64_t blockID) = 0;
+        virtual Result<void> writeBlock(uint64_t blockID, std::vector<uint8_t>& data) = 0;
+        [[nodiscard]] virtual uint64_t getBlockCount() const = 0;
+        [[nodiscard]] virtual uint64_t getBlockSize() const = 0;
+    };
 } // namespace neonfs
