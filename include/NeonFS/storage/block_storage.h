@@ -6,7 +6,7 @@
 namespace neonfs::storage {
     class BlockStorage final : public IStorageProvider {
         std::string path;
-        bool is_mounted = false;
+        bool is_mounted;
         std::fstream filestream;
         std::mutex file_stream_mutex;
 
@@ -14,13 +14,13 @@ namespace neonfs::storage {
         size_t total_blocks_ = 0;
 
         public:
-        explicit BlockStorage(std::string path);
+        BlockStorage();
         ~BlockStorage() override;
 
         Result<void> mount(std::string _path, const BlockStorageConfig &_config);
         Result<void> unmount();
         bool isMounted() const;
-        Result<void> create(std::string path, BlockStorageConfig config);
+        static Result<void> create(std::string path, BlockStorageConfig config);
 
         Result<std::vector<uint8_t>> readBlock(uint64_t blockID) override;
         Result<void> writeBlock(uint64_t blockID, std::vector<uint8_t>& data) override;

@@ -1,6 +1,7 @@
 #include <NeonFS/storage/block_storage.h>
 
-neonfs::storage::BlockStorage::BlockStorage(std::string path) : path(std::move(path)) {
+neonfs::storage::BlockStorage::BlockStorage() {
+    is_mounted = false;
     if (path.empty()) {
         throw std::runtime_error("Storage path cannot be empty");
     }
@@ -28,7 +29,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::mount(std::string _path, con
 
     is_mounted = true;
     block_size_ = _config.block_size;
-    total_blocks_ = _config.total_size;
+    total_blocks_ = (total_blocks_ == 0) ? 0 : (_config.total_size / _config.block_size);
     return Result<void>::ok();
 }
 
@@ -38,6 +39,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::unmount() {
         return Result<void>::err("Storage is not mounted", -1);
     }
 
+    filestream.flush();
     filestream.close();
     if (filestream.is_open()) {
         return Result<void>::err("Failed to close storage file", -2);
@@ -52,10 +54,14 @@ bool neonfs::storage::BlockStorage::isMounted() const {
 }
 
 neonfs::Result<void> neonfs::storage::BlockStorage::create(std::string path, BlockStorageConfig config) {
+    if (config.block_size == 0) return Result<void>::err("Block size cannot be zero", -4);
+    if (config.total_size % config.block_size != 0) {
+        return Result<void>::err("Total size must be a multiple of block size", -5);
+    }
+
     size_t block_count = config.block_size / config.total_size;
     if (block_count < 1) return Result<void>::err("Invalid block count", -1);
     if (path.empty()) return Result<void>::err("Mount path cannot be empty", -2);
-    std::lock_guard<std::mutex> lock(file_stream_mutex);
     std::ofstream c_filestream(path, std::ios::binary);
     if (!c_filestream.is_open()) return Result<void>::err("Failed to open storage file: " + path, -3);
 
@@ -139,7 +145,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::flush() {
     std::lock_guard<std::mutex> lock(file_stream_mutex);
 
     if (!is_mounted) {
-        return Result<void>::err("Storage is not mounted");
+        return Result<void>::err("Storage is not mounted", -1);
     }
 
     filestream.flush();
