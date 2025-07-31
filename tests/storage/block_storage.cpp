@@ -6,7 +6,11 @@ neonfs::storage::BlockStorage::BlockStorage(std::string path) : path(std::move(p
     }
 }
 
-neonfs::Result<void> neonfs::storage::BlockStorage::mount(std::string _path) {
+neonfs::storage::BlockStorage::~BlockStorage() {
+    if (is_mounted) unmount();
+}
+
+neonfs::Result<void> neonfs::storage::BlockStorage::mount(std::string _path, const BlockStorageConfig &_config) {
     std::lock_guard<std::mutex> lock(file_stream_mutex);
     if (is_mounted) {
         return Result<void>::err("Storage is already mounted", -1);
@@ -23,6 +27,8 @@ neonfs::Result<void> neonfs::storage::BlockStorage::mount(std::string _path) {
     }
 
     is_mounted = true;
+    block_size_ = _config.block_size;
+    total_blocks_ = _config.total_size;
     return Result<void>::ok();
 }
 
@@ -46,7 +52,21 @@ bool neonfs::storage::BlockStorage::isMounted() const {
 }
 
 neonfs::Result<void> neonfs::storage::BlockStorage::create(std::string path, BlockStorageConfig config) {
+    size_t block_count = config.block_size / config.total_size;
+    if (block_count < 1) return Result<void>::err("Invalid block count", -1);
+    if (path.empty()) return Result<void>::err("Mount path cannot be empty", -2);
+    std::lock_guard<std::mutex> lock(file_stream_mutex);
+    std::ofstream c_filestream(path, std::ios::binary);
+    if (!c_filestream.is_open()) return Result<void>::err("Failed to open storage file: " + path, -3);
 
+    // Write empty blocks
+    std::vector<uint8_t> empty_block(config.block_size, 0);
+    for (size_t i = 0; i < block_count; i++) {
+        c_filestream.write(reinterpret_cast<const char*>(empty_block.data()), empty_block.size());
+    }
+    c_filestream.flush();
+    c_filestream.close();
+    return Result<void>::ok();
 }
 
 neonfs::Result<std::vector<unsigned char> > neonfs::storage::BlockStorage::readBlock(uint64_t blockID) {
@@ -90,12 +110,16 @@ neonfs::Result<void> neonfs::storage::BlockStorage::writeBlock(uint64_t blockID,
         data.insert(data.end(), padding.begin(), padding.end());
     }
 
-    if (data.size() != block_size_) {
+    if (data.size() > block_size_) {
         return Result<void>::err("Data size does not match block size", -3);
     }
 
-    const uint64_t offset = blockID * block_size_;
+    if (data.size() < block_size_) {
+        data.resize(block_size_, 0);
+    }
+
     {
+        const uint64_t offset = blockID * block_size_;
         std::lock_guard<std::mutex> lock(file_stream_mutex);
         filestream.seekp(offset, std::ios::beg);
         if (!filestream.good()) {
@@ -112,10 +136,24 @@ neonfs::Result<void> neonfs::storage::BlockStorage::writeBlock(uint64_t blockID,
 }
 
 neonfs::Result<void> neonfs::storage::BlockStorage::flush() {
-    if (!is_mounted) {
-        return Result<void>::err("Storage is not mounted", -1);
-    }
     std::lock_guard<std::mutex> lock(file_stream_mutex);
+
+    if (!is_mounted) {
+        return Result<void>::err("Storage is not mounted");
+    }
+
     filestream.flush();
+    if (!filestream) {
+        return Result<void>::err("Flush failed");
+    }
+
     return Result<void>::ok();
+}
+
+uint64_t neonfs::storage::BlockStorage::getBlockCount() const {
+    return total_blocks_;
+}
+
+uint64_t neonfs::storage::BlockStorage::getBlockSize() const {
+    return block_size_;
 }

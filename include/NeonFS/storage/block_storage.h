@@ -4,32 +4,28 @@
 #include <mutex>
 
 namespace neonfs::storage {
-    struct BlockStorageConfig {
-        size_t block_size;
-        size_t total_size;
-        bool encrypted;
-    };
-
     class BlockStorage final : public IStorageProvider {
         std::string path;
         bool is_mounted = false;
         std::fstream filestream;
         std::mutex file_stream_mutex;
 
-        size_t block_size_;
+        size_t block_size_ = 0;
+        size_t total_blocks_ = 0;
 
         public:
-        BlockStorage(std::string path);
+        explicit BlockStorage(std::string path);
+        ~BlockStorage() override;
 
-        Result<void> mount(std::string _path);
+        Result<void> mount(std::string _path, const BlockStorageConfig &_config);
         Result<void> unmount();
         bool isMounted() const;
         Result<void> create(std::string path, BlockStorageConfig config);
 
         Result<std::vector<uint8_t>> readBlock(uint64_t blockID) override;
         Result<void> writeBlock(uint64_t blockID, std::vector<uint8_t>& data) override;
-        uint64_t getBlockCount() const override;
-        uint64_t getBlockSize() const override;
+        [[nodiscard]] uint64_t getBlockCount() const override;
+        [[nodiscard]] uint64_t getBlockSize() const override;
 
         Result<void> flush();
     };
