@@ -16,8 +16,18 @@
 
 ### Internal Modules
 
--[internal/core/Result.md](internal/core/Result.md)
-Explanation of the `neonfs::Result` class and error handling model.
+**Core**
+- [internal/core/Result.md](internal/core/Result.md) — The `Result` class and error handling model.
+- [internal/core/SecureAllocator.md](internal/core/SecureAllocator.md) — Secure memory allocation for sensitive data.
+
+**Security**
+- [internal/security/KeyManager.md](internal/security/KeyManager.md) — Generation, derivation, and verification of cryptographic keys.
+- [internal/security/AESEncryptionProvider.md](internal/security/AESEncryptionProvider.md) — High-level AES-GCM encryption/decryption service.
+- [internal/security/AESGCMCtx.md](internal/security/AESGCMCtx.md) — Low-level context for AES-GCM operations.
+- [internal/security/AESGCMCtxPool.md](internal/security/AESGCMCtxPool.md) — A thread-safe pool for managing `AESGCMCtx` objects.
+
+**Storage**
+- [internal/storage/BlockStorage.md](internal/storage/BlockStorage.md) — File-based provider for fixed-size block I/O.
 
 ---
 
