@@ -46,7 +46,7 @@ Key Methods:
 - `Result<T>::ok(value)` / `Result<void>::ok()` — Creates a success result.
 - `Result<T>::err(...)` — Creates a failure result.
 - `is_ok()` / `is_err()` — Checks the state of the result.
-- `unwrap()` / `unwrap_err()` — Extracts the value or error, throwing an exception if the state is incorrect.
+- `unwrap()` / `unwrap_err()` — Extracts the value or error, throwing an exception `std::runtime_error` if the state is incorrect.
 - `match(ok_fn, err_fn)` — Handles both states with corresponding lambdas in a single call.
 - `map(f)` / `map_err(f)` — Transforms the success or error value.
 - `and_then(f)` / `or_else(f)` — Chains operations that return a `Result`.
@@ -62,6 +62,9 @@ Use `Result<T>` as the return type for any function that can fail, especially:
 - Network requests
 - Data parsing and validation
 - Any operation that crosses an API boundary (e.g., native addon to JavaScript).
+
+> ### Note:
+> For large `T` types, consider using `std::move` with `Result<T>::ok` to avoid unnecessary copies.
 
 ### Example
 

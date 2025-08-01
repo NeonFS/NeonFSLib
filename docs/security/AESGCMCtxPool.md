@@ -7,7 +7,7 @@ namespace:
 
 ## What is `AESGCMCtxPool`?
 
-`AESGCMCtxPool` is a thread-safe object pool for managing and reusing `AESGCMCtx` instances. It is designed to significantly improve performance in applications that perform a high volume of concurrent encryption or decryption operations.
+`AESGCMCtxPool` is a thread-safe object pool for managing and reusing [AESGCMCtx](AESGCMCtx.md) instances. It is designed to significantly improve performance in applications that perform a high volume of concurrent encryption or decryption operations.
 
 By reusing `EVP_CIPHER_CTX` objects, it avoids the overhead of repeated allocation and deallocation, which can be a bottleneck in performance-critical code.
 
@@ -42,6 +42,7 @@ A static factory function is the recommended way to create a pool, as it must be
 ### `Handle acquire()`
 Acquires a context from the pool, blocking if the pool is at maximum capacity and all contexts are in use.
 - **Returns**: A `Handle` instance that provides access to an `AESGCMCtx`.
+- Ensure `maxSize` is sufficient the workload to minimize blocking. or consider non-blocking alternatives like checking `availableCount()` before calling `acquire()`
 
 ### `size_t availableCount()`
 Returns the number of idle contexts currently available in the pool.

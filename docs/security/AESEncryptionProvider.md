@@ -60,7 +60,7 @@ It is designed to be the main entry point for all standard encryption and decryp
 
 ## Why Does It Exist?
 
-While `AESGCMCtx` and `AESGCMCtxPool` provide powerful building blocks, they still require the user to manage the OpenSSL workflow directly. The `AESEncryptionProvider` solves this by offering a much simpler, safer, and more opinionated interface.
+While [AESGCMCtx](AESGCMCtx.md) and [AESGCMCtxPool](AESGCMCtxPool.md) provide powerful building blocks, they still require the user to manage the OpenSSL workflow directly. The `AESEncryptionProvider` solves this by offering a much simpler, safer, and more opinionated interface.
 
 *   **Ease of Use**: Provides two simple methods: `encrypt()` and `decrypt()`.
 *   **Security by Default**:
@@ -69,7 +69,7 @@ While `AESGCMCtx` and `AESGCMCtxPool` provide powerful building blocks, they sti
     *   Ensures a 16-byte authentication tag is always used.
     *   Uses `secure_bytes` for all sensitive data to leverage the secure heap.
 *   **High Performance**: It transparently uses an internal `AESGCMCtxPool` to make concurrent operations highly efficient.
-*   **Robust Error Handling**: All operations return a `neonfs::Result`, providing clear, non-exceptional error handling for common failures like tag mismatches (tamper detection).
+*   **Robust Error Handling**: All operations return a `neonfs::Result` [object](../core/Result.md), providing clear, non-exceptional error handling for common failures like tag mismatches (tamper detection).
 
 ## How Does It Work?
 

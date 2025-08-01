@@ -105,8 +105,7 @@ secure_bytes iv, tag;
 ## Multi-threading
 
 The `AESEncryptionProvider` instance is thread-safe. You can share a single `std::unique_ptr` or `std::shared_ptr` to it across multiple threads without any external locking.
-```
-cpp
+```cpp
 #include <thread>
 #include <vector>
 
@@ -134,8 +133,7 @@ void multi_thread_example(std::unique_ptr<neonfs::security::AESEncryptionProvide
 
 ### Heap Initialization
 Before any cryptographic operations, you must create the secure heap. Failure to do so will cause operations to fail.
-```
-cpp
+```cpp
 #include <NeonFS/core/types.h>
 
 int main(int argc, char** argv) {

@@ -31,7 +31,7 @@ static Result<secure_bytes> generate_master_key(size_t size = 32);
 ```
 
 - **`size`**: The desired key size in bytes. Defaults to 32 bytes (256 bits). Must be between 1 and 512.
-- **Returns**: A `Result` containing the `secure_bytes` key on success, or an error if generation fails.
+- **Returns**: A [Result](../core/Result.md) containing the `secure_bytes` key on success, or an error if generation fails.
 
 ### `generate_salt()`
 

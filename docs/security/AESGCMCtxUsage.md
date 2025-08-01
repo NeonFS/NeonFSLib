@@ -7,8 +7,7 @@ This document provides complete examples of how to use `AESGCMCtx` to perform AE
 ## Prerequisites
 
 Include the necessary headers and ensure you have a 256-bit (32-byte) key. For this example, we will also use the `secure_bytes` type alias for buffers.
-```
-cpp
+```cpp
 #include <neonfs/security/aes_gcm_ctx.h>
 #include <neonfs/types.h>
 #include <neonfs/result.hpp>

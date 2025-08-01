@@ -15,7 +15,7 @@ The OpenSSL `EVP` API is powerful but complex and error-prone. `AESGCMCtx` solve
 
 * **Automatic Resource Management**: The constructor allocates the `EVP_CIPHER_CTX` and the destructor automatically frees it, preventing memory leaks.
 * **Simplified Initialization**: It encapsulates the multi-step AES-GCM initialization logic into a single, clear `init()` method.
-* **Error Safety**: The `init()` method returns a `neonfs::Result<void>`, allowing for clean, explicit error handling without relying on OpenSSL's integer return codes and error queue.
+* **Error Safety**: The `init()` method returns a [`neonfs::Result<void>` object](../core/Result.md), allowing for clean, explicit error handling without relying on OpenSSL's integer return codes and error queue.
 * **Reusability**: The context can be safely reset and reused for multiple operations, which is more efficient than creating and destroying contexts repeatedly.
 
 ## How Does It Work?

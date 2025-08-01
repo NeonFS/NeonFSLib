@@ -62,7 +62,7 @@ Returns `true` if the storage file is currently open and mounted, `false` otherw
 
 **`Result<std::vector<uint8_t>> readBlock(uint64_t blockID)`**
 Reads the full contents of the block specified by `blockID`.
-*   **Returns:** A `Result` containing the data as a `std::vector<uint8_t>` on success. The vector's size will equal the block size. Returns an error if the block ID is out of bounds or a read failure occurs.
+*   **Returns:** A [Result](../core/Result.md) containing the data as a `std::vector<uint8_t>` on success. The vector's size will equal the block size. Returns an error if the block ID is out of bounds or a read failure occurs.
 
 **`Result<void> writeBlock(uint64_t blockID, std::vector<uint8_t>& data)`**
 Writes the contents of the `data` vector to the block specified by `blockID`.
