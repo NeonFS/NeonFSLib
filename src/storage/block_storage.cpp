@@ -26,7 +26,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::mount(std::string _path, con
 
     is_mounted = true;
     block_size_ = _config.block_size;
-    total_blocks_ = (total_blocks_ == 0) ? 0 : (_config.total_size / _config.block_size);
+    total_blocks_ = (block_size_ == 0) ? 0 : (_config.total_size / _config.block_size);
     return Result<void>::ok();
 }
 
