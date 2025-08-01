@@ -66,12 +66,12 @@ namespace neonfs {
                 "Both handlers must return the same type");
 
             return std::visit(
-                [&](auto&& arg) -> OkResult {  // Explicit return type
-                    using Arg = std::decay_t<decltype(arg)>;
+                [&]<typename T0>(T0&& arg) -> OkResult {  // Explicit return type
+                    using Arg = std::decay_t<T0>;
                     if constexpr (std::is_same_v<Arg, T>) {
-                        return std::forward<FOk>(ok_fn)(std::forward<decltype(arg)>(arg));
+                        return std::forward<FOk>(ok_fn)(std::forward<T0>(arg));
                     } else {
-                        return std::forward<FErr>(err_fn)(std::forward<decltype(arg)>(arg));
+                        return std::forward<FErr>(err_fn)(std::forward<T0>(arg));
                     }
                 },
                 data_
@@ -82,12 +82,8 @@ namespace neonfs {
             return is_ok() ? std::get<T>(data_) : default_val;
         }
 
-        template<typename F>
+        template<typename F> requires std::invocable<F, Error>
         T unwrap_or_else(F&& f) {
-            static_assert(
-                std::is_invocable_v<F, Error>,
-                "Function must accept Error and return T"
-            );
             return is_ok() ? std::get<T>(data_) : f(std::get<Error>(data_));
         }
 
@@ -211,12 +207,12 @@ namespace neonfs {
                 "Both handlers must return the same type");
 
             return std::visit(
-                [&](auto&& arg) -> OkResult {  // Explicit return type
-                    using Arg = std::decay_t<decltype(arg)>;
+                [&]<typename T0>(T0&& arg) -> OkResult {  // Explicit return type
+                    using Arg = std::decay_t<T0>;
                     if constexpr (std::is_same_v<Arg, std::monostate>) {
                         return std::forward<FOk>(ok_fn)();
                     } else {
-                        return std::forward<FErr>(err_fn)(std::forward<decltype(arg)>(arg));
+                        return std::forward<FErr>(err_fn)(std::forward<T0>(arg));
                     }
                 },
                 data_

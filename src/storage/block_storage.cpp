@@ -2,9 +2,6 @@
 
 neonfs::storage::BlockStorage::BlockStorage() {
     is_mounted = false;
-    if (path.empty()) {
-        throw std::runtime_error("Storage path cannot be empty");
-    }
 }
 
 neonfs::storage::BlockStorage::~BlockStorage() {
@@ -59,7 +56,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::create(std::string path, Blo
         return Result<void>::err("Total size must be a multiple of block size", -5);
     }
 
-    size_t block_count = config.block_size / config.total_size;
+    size_t block_count = config.total_size / config.block_size;
     if (block_count < 1) return Result<void>::err("Invalid block count", -1);
     if (path.empty()) return Result<void>::err("Mount path cannot be empty", -2);
     std::ofstream c_filestream(path, std::ios::binary);
