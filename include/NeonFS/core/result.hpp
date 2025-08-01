@@ -8,6 +8,11 @@
 namespace neonfs {
 
     template<typename T>
+    class Result;
+    template<>
+    class Result<void>;
+
+    template<typename T>
     class Result {
     public:
         [[nodiscard]] static Result<T> ok(T value) {
