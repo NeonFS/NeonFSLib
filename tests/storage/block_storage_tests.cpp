@@ -154,15 +154,55 @@ TEST_F(BlockStorageTest, EdgeCases) {
     EXPECT_NO_THROW(fs::remove(large_file));
 }
 
-// TEST_F(BlockStorageTest, FileCorruption) {
-//     // Simulate corrupted file (wrong size)
-//     std::ofstream corrupt_file(test_file, std::ios::binary | std::ios::trunc);
-//     corrupt_file.write("CORRUPTED", 9);
-//     corrupt_file.close();
-//
-//     BlockStorage storage;
-//     EXPECT_TRUE(storage.mount(test_file.string(), config).is_err());
-// }
+TEST_F(BlockStorageTest, FileValidation) {
+    // 1. Test non-existent file
+    {
+        BlockStorage storage;
+        auto result = storage.mount("nonexistent.bin", config);
+        EXPECT_TRUE(result.is_err());
+        EXPECT_EQ(result.unwrap_err().code, -4);
+    }
+
+    // 2. Test corrupted file (wrong size)
+    {
+        // Create a corrupted file
+        fs::path corrupt_file = fs::temp_directory_path() / "corrupted.bin";
+        {
+            std::ofstream out(corrupt_file, std::ios::binary);
+            out.write("CORRUPTED", 9);
+        }
+
+        BlockStorage storage;
+        auto result = storage.mount(corrupt_file.string(), config);
+        EXPECT_TRUE(result.is_err());
+        EXPECT_EQ(result.unwrap_err().code, -5);
+
+        fs::remove(corrupt_file);
+    }
+
+    // 3. Test directory instead of file
+    {
+        fs::path temp_dir = fs::temp_directory_path() / "temp_dir";
+        fs::create_directory(temp_dir);
+
+        BlockStorage storage;
+        auto result = storage.mount(temp_dir.string(), config);
+        EXPECT_TRUE(result.is_err());
+        EXPECT_EQ(result.unwrap_err().code, -4);
+
+        fs::remove(temp_dir);
+    }
+}
+
+TEST_F(BlockStorageTest, ConfigValidation) {
+    // 1. Test invalid block size (0)
+    {
+        BlockStorage storage;
+        auto result = storage.mount(test_file.string(), {0, 4096*100});
+        EXPECT_TRUE(result.is_err());
+        EXPECT_EQ(result.unwrap_err().code, -6);
+    }
+}
 
 TEST_F(BlockStorageTest, PerformanceBenchmark) {
     BlockStorage storage;
@@ -181,25 +221,3 @@ TEST_F(BlockStorageTest, PerformanceBenchmark) {
     std::cout << "Write performance: "
               << (iterations * 4) / duration.count() << " MB/s\n";
 }
-
-// Power Failure Simulation
-// TEST_F(BlockStorageTest, WriteConsistency) {
-//     BlockStorage storage;
-//     storage.mount(test_file.string(), config).unwrap();
-//
-//     // Simulate power failure mid-write
-//     testing::internal::CaptureStderr();
-//     EXPECT_DEATH({
-//         std::vector<uint8_t> data(4096, 0xCC);
-//         storage.writeBlock(50, data);
-//         abort(); // Simulate crash
-//     }, "");
-//     testing::internal::GetCapturedStderr();
-//
-//     // Remount and verify
-//     BlockStorage new_storage;
-//     new_storage.mount(test_file.string(), config).unwrap();
-//     auto result = new_storage.readBlock(50);
-//     ASSERT_TRUE(result.is_ok());
-//     EXPECT_NE(result.unwrap(), std::vector<uint8_t>(4096, 0xCC));
-// }

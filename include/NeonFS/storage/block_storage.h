@@ -2,6 +2,7 @@
 #include <NeonFS/core/interfaces.h>
 #include <fstream>
 #include <mutex>
+#include <filesystem>
 
 namespace neonfs::storage {
     class BlockStorage final : public IStorageProvider {

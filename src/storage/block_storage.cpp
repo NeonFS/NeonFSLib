@@ -18,6 +18,19 @@ neonfs::Result<void> neonfs::storage::BlockStorage::mount(std::string _path, con
         return Result<void>::err("Mount path cannot be empty", -2);
     }
 
+    std::error_code ec;
+    if (!std::filesystem::exists(_path, ec) || !std::filesystem::is_regular_file(_path, ec)) {
+        return Result<void>::err("Path is not a valid file", -4);
+    }
+
+    if (auto file_size = std::filesystem::file_size(_path, ec); ec || file_size != _config.total_size) {
+        return Result<void>::err("File size doesn't match configuration", -5);
+    }
+
+    if (_config.block_size == 0 || _config.total_size % _config.block_size != 0) {
+        return Result<void>::err("Invalid block configuration", -6);
+    }
+
     path = std::move(_path);
     filestream.open(path, std::ios::binary | std::ios::in | std::ios::out);
     if (!filestream.is_open()) {
@@ -26,7 +39,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::mount(std::string _path, con
 
     is_mounted = true;
     block_size_ = _config.block_size;
-    total_blocks_ = (block_size_ == 0) ? 0 : (_config.total_size / _config.block_size);
+    total_blocks_ = _config.total_size / _config.block_size;
     return Result<void>::ok();
 }
 

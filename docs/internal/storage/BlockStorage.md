@@ -5,6 +5,8 @@ namespace:
 - `neonfs::storage`
 ---
 
+> **NOTE:** `BlockStorage` does not verify consistency or corruption.
+
 ## Overview
 
 `BlockStorage` is a concrete implementation of the `IStorageProvider` interface. It provides a low-level abstraction for managing a file on disk as a collection of fixed-size blocks. This class is responsible for creating, mounting, reading, and writing data in discrete, block-aligned chunks.
