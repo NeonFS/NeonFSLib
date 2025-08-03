@@ -42,4 +42,30 @@ namespace neonfs {
         size_t total_size;
     };
 
+    /**
+     * @brief Represents a block entry associated with a file.
+     */
+    struct BlockInfo {
+        uint64_t blockId;                   // Block ID
+        uint64_t offset;                    // Offset in file
+        std::vector<uint8_t> iv;            // Initialization vector for encryption
+        std::vector<uint8_t> tag;           // Authentication tag (GCM)
+    };
+
+    /**
+     * @brief Represents metadata associated with a file or directory in NeonFS.
+     */
+    struct Metadata {
+        uint64_t fileId;                    // Unique file or directory identifier
+        std::string filename;               // Name of the file or directory
+        uint64_t size;                      // Total size (0 for directories)
+        uint64_t timestamp_created;         // Creation timestamp (epoch)
+        uint64_t timestamp_modified;        // Last-modified timestamp (epoch)
+        uint32_t permissions;               // Permission bitmask
+        bool isDirectory;                   // True if this is a directory
+        uint64_t parentId;                  // ID of the parent directory (0 for root)
+
+        std::vector<BlockInfo> blocks;      // Ordered list of associated blocks (empty for directories)
+    };
+
 } // namespace neonfs
