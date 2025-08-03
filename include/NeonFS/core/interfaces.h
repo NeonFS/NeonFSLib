@@ -100,5 +100,37 @@ namespace neonfs {
          */
         virtual bool isDirectoryEmpty(uint64_t directoryId) = 0;
 
+        /**
+         * @brief Move a file or directory to a new parent directory.
+         * @param fileId The ID of the file or directory to move.
+         * @param newParentId The ID of the new parent directory.
+         */
+        virtual void move(uint64_t fileId, uint64_t newParentId) = 0;
+
+        /**
+         * @brief Create a new directory.
+         * @param name Name of the directory.
+         * @param parentId ID of the parent directory.
+         * @param permissions Optional permission bitmask.
+         * @return ID of the newly created directory.
+         */
+        virtual uint64_t createDirectory(const std::string &name, uint64_t parentId, uint32_t permissions) = 0;
+
+        /**
+         * @brief Create a new empty file.
+         * @param name Name of the file.
+         * @param parentId ID of the parent directory.
+         * @param permissions Optional permission bitmask.
+         * @return ID of the newly created file.
+         */
+        virtual uint64_t createFile(const std::string &name, uint64_t parentId, uint32_t permissions) = 0;
+
+
+        /**
+         * @brief Rename a file or directory.
+         * @param fileId ID of the file or directory to rename.
+         * @param newName New name for the file or directory.
+         */
+        virtual void rename(uint64_t fileId, const std::string &newName) = 0;
     };
 } // namespace neonfs
