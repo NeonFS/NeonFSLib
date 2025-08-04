@@ -6,6 +6,9 @@
 
 ## Status
 
+![License: AGPL v3](https://img.shields.io/badge/license-AGPLv3-blue.svg)
+![Status: Early Development](https://img.shields.io/badge/status-early--dev-yellow)
+
 > NeonFS is currently **in early development**.  
 > APIs and architecture are subject to change as we evolve the core.
 
