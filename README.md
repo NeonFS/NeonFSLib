@@ -1,6 +1,6 @@
 # NeonFS
 
-**NeonFS** is a lightweight, modular virtual filesystem library written in modern C++17. It's designed to serve as the secure, high-performance backend for ElectronJS-based desktop applications that require custom file handling, encryption, and metadata control.
+**NeonFS** is a lightweight, modular virtual filesystem library written in modern C++20. It's designed to serve as the secure, high-performance backend for ElectronJS-based desktop applications that require custom file handling, encryption, and metadata control.
 
 ---
 
