@@ -66,10 +66,16 @@ Expect significant updates over time.
 
 ## License
 
-To be determined.  
-(Open source license will be added when the project stabilizes.)
+This project is licensed under the GNU Affero General Public License v3.0.  
+See the [LICENSE.txt](LICENSE.txt) file for details.
 
 ## Contributions
 
 We're not accepting contributions at this stage.  
 Stay tuned for updates as the foundation stabilizes!
+
+## Contact:
+
+Mohammed Ifkirne
+Email: mohammedifkirne569@gmail.com
+GitHub: [https://github.com/MohaIfk/](https://github.com/MohaIfk/)
