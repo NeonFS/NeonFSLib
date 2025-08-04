@@ -7,6 +7,23 @@
 
 ---
 
+## Why NeonFS?
+
+Most virtual filesystem libraries either prioritize raw performance or flexibility — **NeonFS aims to balance both**, with a focus on **security**, **modularity**, and **seamless integration** into modern desktop environments like ElectronJS.
+
+Here’s what sets **NeonFS** apart:
+
+* **Security First**: Full encryption of file contents using AES-GCM with future plans for secure key/session handling.
+* **Custom Metadata Layer**: Go beyond typical file systems with structured, SQLite-backed metadata — enabling tagging, permissions, and fine-grained control.
+* **Optimized for Desktop Apps**: Built to be embedded in Electron apps with clean async bindings for Node.js.
+* **Modular Core**: Designed with extension and customization in mind — adapt it to your app’s needs without rewriting core logic.
+* **C++17 Performance**: Leveraging modern C++ for speed, memory safety (within reason), and lower overhead compared to scripting-based VFS solutions.
+* **Developer-Oriented Architecture**: Clean internal design for easier maintenance and future contributions.
+
+Whether you're building a secure document manager, encrypted note-taking app, or anything that requires fine control over how files are stored, **NeonFS is designed to be your trusted backend**.
+
+---
+
 ## Status
 
 > NeonFS is currently **in early development**.  
