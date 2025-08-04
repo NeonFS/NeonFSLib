@@ -50,6 +50,7 @@ NeonFS/
 ├── bindings/ # Node.js/Electron bindings (planned)
 ├── tests/ # Unit and integration tests
 ├── docs/ # Documentation
+├── LICENSE.txt
 └── README.md
 ```
 
