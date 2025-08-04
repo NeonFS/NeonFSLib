@@ -1,13 +1,13 @@
 # NeonFS
 
+![License: AGPL v3](https://img.shields.io/badge/license-AGPLv3-blue.svg)
+![Status: Early Development](https://img.shields.io/badge/status-early--dev-yellow)
+
 **NeonFS** is a lightweight, modular virtual filesystem library written in modern C++20. It's designed to serve as the secure, high-performance backend for ElectronJS-based desktop applications that require custom file handling, encryption, and metadata control.
 
 ---
 
 ## Status
-
-![License: AGPL v3](https://img.shields.io/badge/license-AGPLv3-blue.svg)
-![Status: Early Development](https://img.shields.io/badge/status-early--dev-yellow)
 
 > NeonFS is currently **in early development**.  
 > APIs and architecture are subject to change as we evolve the core.
