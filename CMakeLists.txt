@@ -10,6 +10,7 @@ set(OPENSSL_USE_STATIC_LIBS TRUE)
 find_package(OpenSSL REQUIRED)
 
 add_library(NeonFSLib STATIC
+        third_party/sqlite/sqlite3.c
         src/security/aes_gcm_ctx.cpp
         src/security/aes_gcm_ctx_pool.cpp
         src/security/aes_encryption_provider.cpp
@@ -20,6 +21,7 @@ add_library(NeonFSLib STATIC
 # Include directories
 target_include_directories(NeonFSLib PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/
 )
 
 # Link dependencies
