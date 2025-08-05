@@ -24,7 +24,6 @@ target_include_directories(NeonFSLib PUBLIC
 
 # Link dependencies
 target_link_libraries(NeonFSLib
-        OpenSSL::SSL
         OpenSSL::Crypto
 )
 
