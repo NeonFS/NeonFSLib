@@ -89,6 +89,9 @@ Expect significant updates over time.
 
 This project is licensed under the GNU Affero General Public License v3.0.  
 See the [LICENSE.txt](LICENSE.txt) file for details.
+  
+This project uses OpenSSL, which is licensed under the Apache License 2.0.  
+Please see the `LICENSE-DEPENDENCIES.txt` file for details on third-party licenses.
 
 ## Contributions
 
