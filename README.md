@@ -3,24 +3,8 @@
 ![License: AGPL v3](https://img.shields.io/badge/license-AGPLv3-blue.svg)
 ![Status: Early Development](https://img.shields.io/badge/status-early--dev-yellow)
 
-**NeonFS** is a lightweight, modular virtual filesystem library written in modern C++20. It's designed to serve as the secure, high-performance backend for ElectronJS-based desktop applications that require custom file handling, encryption, and metadata control.
-
----
-
-## Why NeonFS?
-
-Most virtual filesystem libraries either prioritize raw performance or flexibility — **NeonFS aims to balance both**, with a focus on **security**, **modularity**, and **seamless integration** into modern desktop environments like ElectronJS.
-
-Here’s what sets **NeonFS** apart:
-
-* **Security First**: Full encryption of file contents using AES-GCM with future plans for secure key/session handling.
-* **Custom Metadata Layer**: Go beyond typical file systems with structured, SQLite-backed metadata — enabling tagging, permissions, and fine-grained control.
-* **Optimized for Desktop Apps**: Built to be embedded in Electron apps with clean async bindings for Node.js.
-* **Modular Core**: Designed with extension and customization in mind — adapt it to your app’s needs without rewriting core logic.
-* **C++20 Performance**: Leveraging modern C++ for speed, memory safety (within reason), and lower overhead compared to scripting-based VFS solutions.
-* **Developer-Oriented Architecture**: Clean internal design for easier maintenance and future contributions.
-
-Whether you're building a secure document manager, encrypted note-taking app, or anything that requires fine control over how files are stored, **NeonFS is designed to be your trusted backend**.
+**NeonFS** is a modular, high-security virtual filesystem library implemented in C++20.
+It delivers encrypted, metadata-driven storage with consistent security guarantees, suitable for desktop, server, or embedded applications requiring strict control over file handling, storage policies, and security boundaries.
 
 ---
 
@@ -31,34 +15,101 @@ Whether you're building a secure document manager, encrypted note-taking app, or
 
 ---
 
+## Global Philosophy
+
+NeonFS is founded on one immutable principle:
+
+> Security first. Performance is important. Convenience is optional. Leaks are unacceptable.
+
+All architectural and implementation decisions are subjected to rigorous security evaluation. Components are designed as potential attack surfaces and hardened accordingly.
+
+### Key Tenets
+
+1. **Security is the Goal, Not a Feature**
+   Every design choice is rigorously evaluated for confidentiality and integrity impacts.
+
+2. **Leak Intolerance**
+   No data leakage—partial or indirect—is tolerated.
+
+3. **Controlled Performance Trade-offs**
+   Performance enhancements must never degrade security guarantees.
+
+4. **Minimal Attack Surface**
+   Only essential metadata, APIs, and interfaces are exposed.
+
+5. **Isolation and Encapsulation**
+   Subsystems are compartmentalized to prevent cascading compromises.
+
+6. **Security Through Obscurity Is Not Security**
+   Cryptography and strict access enforcement are the foundation.
+
+7. **No Blind Trust in Dependencies**
+   All third-party components undergo verification and sandboxing where feasible.
+
+8. **Proactive Threat Modeling**
+   Threats are anticipated and addressed in design, not post-incident.
+
+9. **End-to-End Protection**
+   Data remains protected throughout its lifecycle.
+
+10. **Audit-Friendly Design**
+    Architected to facilitate external verification without weakening security.
+
+---
+
+## Purpose and Scope
+
+NeonFS is designed as a robust foundation for any system demanding:
+
+* Verified, encrypted storage with granular metadata control
+* Predictable, auditable security behavior overriding raw throughput priorities
+* Flexible integration across multiple runtime environments without sacrificing security
+
+---
+
+## Differentiators
+
+* AES-GCM encrypted block storage with low overhead
+* Encrypted metadata storage that eliminates plaintext leakage
+* Cryptographically hashed indexes for secure, efficient lookups
+* Modular, extensible architecture adaptable to diverse deployment scenarios
+* Implemented in C++20 for consistent, measurable performance characteristics
+
+These features enable NeonFS to support sensitive workloads ranging from compliance-bound data storage to embedded systems requiring strong confidentiality guarantees.
+
+---
+
 ## Project Goals
 
-- Provide a secure and fast virtual filesystem layer for desktop apps
-- Handle files and directories via custom metadata logic
-- Support encrypted block-level file storage
-- Enable smooth integration with ElectronJS via native bindings
-- Build with modularity and performance in mind
+* Deliver a secure, high-performance virtual filesystem core
+* Provide encrypted, block-level storage with verifiable integrity
+* Implement a metadata and permissions system resilient against leakage
+* Maintain modularity to support multiple runtime environments
+* Ensure behavior consistent with stringent security policies
 
 ---
 
 ## Planned Features
 
-- Virtual file and directory abstraction
-- Encrypted block storage with AES-GCM
-- Secure memory handling for sensitive data
-- SQLite-backed metadata layer
-- Key derivation and session management
-- API layer exposed to Node.js/Electron
+* Virtual file and directory abstraction with strict access controls
+* AES-GCM block encryption and authentication
+* Secure memory management, including zeroization of sensitive buffers
+* SQLite-backed encrypted metadata layer with pluggable backends
+* Robust key derivation and session lifecycle management
+* Language bindings targeting multiple runtime environments
 
 ---
 
-## Usage
+## Metadata Obfuscation
 
-The library is designed to be embedded into a Node.js environment and accessed from Electron apps. A JS wrapper will expose its functionality in a clean and async-friendly interface.
+NeonFS treats all filesystem metadata as sensitive, preventing leakage through:
 
-_Example usage and API documentation will come as development progresses._
+* **Full Encryption:** Filenames, sizes, timestamps, directory structures, and block mappings are consolidated into AES-256-GCM encrypted blobs.
+* **Cryptographic Indexing:** Lookups rely on HMAC-derived hashes to avoid storing plaintext names.
+* **Encrypted Relationships:** Parent-child links and block mappings are cryptographically protected using AES-SIV and opaque handles.
+* **Anti-Forensic Measures:** Fixed-size storage units mask size patterns; timestamps include randomized offsets; unused fields are populated with noise data.
 
----
+This architecture guarantees that no unauthorized party, including backend administrators, can extract meaningful metadata without the appropriate cryptographic keys, ensuring confidentiality even in adversarial conditions.
 
 ## Project Structure (Work in Progress)
 
@@ -73,17 +124,6 @@ NeonFS/
 ├── LICENSE.txt
 └── README.md
 ```
-
-## Development Notes
-
-We're currently finalizing the low-level design and core architecture.  
-The initial milestones focus on:
-
-- Block-based file storage system
-- Secure key management
-- Minimal working FS node structure
-
-Expect significant updates over time.
 
 ## License
 
