@@ -35,21 +35,31 @@ int main(int argc, char** argv) {
 ```
 
 ### Memory Overhead
-Cryptographic operations require significantly more memory than the size of the plaintext alone. A single `encrypt` or `decrypt` call needs space for the input data, the output data, and internal buffers.
+Cryptographic operations require significantly more memory than the size of the plaintext alone. A single `encrypt` or `decrypt` call needs space for the input data or the output data, and internal buffers.
 
-*   An operation on data of size `N` requires heap space for the `N`-byte input and `N`-byte output simultaneously.
-*   OpenSSL adds its own overhead, which can be around **1.7x** the size of the data being processed.
-*   Therefore, a safe estimate for the total memory needed for one operation on data of size `N` is approximately **3.4x N**.
+Compute a conservative secure-heap requirement as:
+
+    secure_needed = threads_concurrent * R(chunk_size) * F
+
+Where:
+- `R(x)` = round-up of x to secure-allocator slab, see [Memory overhead in SecureAllocator](../core/SecureAllocator.md#secure-heap-memory-usage).
+- `F` = per-operation multiplier:
+    - `F = 1` when only input is secure (e.g., encrypt returns non-secure std::vector).
+    - `F ≈ 1.2` (use 1.5 for safety) if OpenSSL also allocates internal buffers in secure-heap during processing.
+
+Examples:
+- Encrypting 10 MiB chunks on 4 threads, with `encrypt(std::vector<uint8_t, secure_allocator<uint8_t>>)` → `std::vector<uint8_t>`: `R(10 MiB)=16 MiB`, `F=1.2` ⇒ need ≈ 76.8 MiB.
 
 **You must initialize the secure heap with enough capacity to handle your largest concurrent workload.**
 
-For example, if you plan to encrypt 10 MB data chunks across 4 threads concurrently, you should allocate at least:
-`4 (threads) * 10 MB (chunk size) * 3.4 (overhead factor) = 136 MB`
+**Recommendations**
+- Align chunk sizes to slab boundaries where possible (e.g., power-of-two MiB boundaries) to reduce rounding waste, see [Memory overhead in SecureAllocator](../core/SecureAllocator.md#secure-heap-memory-usage).
+- Always test and measure with your OpenSSL version and real workload; use the above formula + 10–20% margin if uncertain.
 
 ### Final notes
 
 * It’s best to round up when setting heap size.
-* If you want to be even more conservative, consider a 3.5× or 4× multiplier.
+* If you want to be even more conservative, consider a 1.5× or 2× multiplier.
 * Always validate sizing with your own benchmarks and monitor `CRYPTO_secure_used()`.
 
 ## What is `AESEncryptionProvider`?
@@ -94,14 +104,14 @@ The constructor for the provider.
 - **`master_key`**: A `secure_bytes` buffer containing the 32-byte (256-bit) master key. The provider takes ownership of the key material. Throws `std::invalid_argument` if the key is not 32 bytes.
 - **`poolMaxSize`**: The maximum number of `AESGCMCtx` objects to keep in the internal pool. This determines the maximum level of concurrency.
 
-### `Result<secure_bytes> encrypt(const secure_bytes& plain, secure_bytes& outIV, secure_bytes& outTag)`
+### `Result<std::vector<uint8_t>> encrypt(const secure_bytes& plain, std::vector<uint8_t>& outIV, std::vector<uint8_t>& outTag)`
 Encrypts plaintext data.
 - **`plain`**: The plaintext to encrypt.
-- **`outIV`**: A `secure_bytes` buffer that will be populated with the newly generated 12-byte IV.
-- **`outTag`**: A `secure_bytes` buffer that will be populated with the 16-byte authentication tag.
+- **`outIV`**: A `std::vector<uint8_t>` buffer that will be populated with the newly generated 12-byte IV.
+- **`outTag`**: A `std::vector<uint8_t>` buffer that will be populated with the 16-byte authentication tag.
 - **Returns**: A `Result` containing the ciphertext on success, or an error on failure.
 
-### `Result<secure_bytes> decrypt(const secure_bytes& cipher, const secure_bytes& iv, secure_bytes& tag)`
+### `Result<secure_bytes> decrypt(const std::vector<uint8_t>& cipher, const std::vector<uint8_t>& iv, std::vector<uint8_t>& tag)`
 Decrypts ciphertext data and verifies its authenticity.
 - **`cipher`**: The ciphertext to decrypt.
 - **`iv`**: The 12-byte IV that was used during encryption.

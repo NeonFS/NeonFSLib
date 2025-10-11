@@ -45,9 +45,9 @@ void encrypt_decrypt_example(neonfs::security::AESEncryptionProvider* provider) 
     secure_bytes original_data = {'S', 'e', 'n', 's', 'i', 't', 'i', 'v', 'e', ' ', 'I', 'n', 'f', 'o'};
 
     // 2. Declare buffers for the outputs
-    secure_bytes iv;
-    secure_bytes tag;
-    secure_bytes ciphertext;
+    std::vector<uint8_t> iv;
+    std::vector<uint8_t> tag;
+    std::vector<uint8_t> ciphertext;
 
     // 3. Encrypt the data
     auto encrypt_result = provider->encrypt(original_data, iv, tag);
@@ -79,9 +79,9 @@ void encrypt_decrypt_example(neonfs::security::AESEncryptionProvider* provider) 
 The `decrypt` method will fail if the ciphertext, IV, or tag have been modified. This is a critical feature of AES-GCM.
 ```cpp
 void tamper_detection_example(neonfs::security::AESEncryptionProvider* provider) {
-using namespace neonfs;
-secure_bytes original_data = {1, 2, 3};
-secure_bytes iv, tag;
+    using namespace neonfs;
+    secure_bytes original_data = {1, 2, 3};
+    std::vector<uint8_t> iv, tag;
 
     auto ciphertext = provider->encrypt(original_data, iv, tag).unwrap();
 
@@ -143,15 +143,3 @@ int main(int argc, char** argv) {
     // ... rest of your application's startup code ...
 }
 ```
-
-### Memory Overhead
-Cryptographic operations require significantly more memory than the size of the plaintext alone. A single `encrypt` or `decrypt` call needs space for the input data, the output data, and internal buffers.
-
-*   An operation on data of size `N` requires heap space for the `N`-byte input and `N`-byte output simultaneously.
-*   OpenSSL adds its own overhead, which can be around **1.7x** the size of the data being processed.
-*   Therefore, a safe estimate for the total memory needed for one operation on data of size `N` is approximately **3.4x N**.
-
-**You must initialize the secure heap with enough capacity to handle your largest concurrent workload.**
-
-For example, if you plan to encrypt 10 MB data chunks across 4 threads concurrently, you should allocate at least:
-`4 (threads) * 10 MB (chunk size) * 3.4 (overhead factor) = 136 MB`
