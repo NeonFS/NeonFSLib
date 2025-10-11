@@ -6,10 +6,10 @@ neonfs::security::AESEncryptionProvider::AESEncryptionProvider(secure_bytes &&ma
     if (key_.size() != 32) throw std::invalid_argument("Key must be 256 bits (32 bytes).");
 }
 
-neonfs::Result<neonfs::secure_bytes> neonfs::security::AESEncryptionProvider::encrypt(const secure_bytes &plain, secure_bytes &outIV, secure_bytes &outTag) {
+neonfs::Result<std::vector<uint8_t>> neonfs::security::AESEncryptionProvider::encrypt(const secure_bytes &plain, std::vector<uint8_t> &outIV, std::vector<uint8_t> &outTag) {
     // Validate key first (most critical check)
     if (key_.size() != 32) {
-        return Result<secure_bytes>::err(
+        return Result<std::vector<uint8_t>>::err(
             "Invalid key size: expected 32 bytes, got " +
             std::to_string(key_.size()));
     }
@@ -18,11 +18,11 @@ neonfs::Result<neonfs::secure_bytes> neonfs::security::AESEncryptionProvider::en
     if (outIV.empty()) {
         outIV.resize(iv_size());
         if (RAND_bytes(outIV.data(), outIV.size()) != 1) {
-            return Result<secure_bytes>::err("Failed to generate secure IV");
+            return Result<std::vector<uint8_t>>::err("Failed to generate secure IV");
         }
     }
     else if (outIV.size() != iv_size()) {
-        return Result<secure_bytes>::err(
+        return Result<std::vector<uint8_t>>::err(
             "Invalid IV size: expected " + std::to_string(iv_size()) +
             " bytes, got " + std::to_string(outIV.size()));
     }
@@ -35,53 +35,53 @@ neonfs::Result<neonfs::secure_bytes> neonfs::security::AESEncryptionProvider::en
 
     // Initialize the encryption operation
     if (1 != EVP_EncryptInit_ex(ctx_handle->get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr)) {
-        return Result<secure_bytes>::err("Failed to initialize AES-GCM encryption.");
+        return Result<std::vector<uint8_t>>::err("Failed to initialize AES-GCM encryption.");
     }
 
     // Set the IV length
     if (1 != EVP_CIPHER_CTX_ctrl(ctx_handle->get(), EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(outIV.size()), nullptr)) {
-        return Result<secure_bytes>::err("Failed to set IV length.");
+        return Result<std::vector<uint8_t>>::err("Failed to set IV length.");
     }
 
     // Initialize key and IV
     if (1 != EVP_EncryptInit_ex(ctx_handle->get(), nullptr, nullptr, key_.data(), outIV.data())) {
-        return Result<secure_bytes>::err("Failed to set key and IV.");
+        return Result<std::vector<uint8_t>>::err("Failed to set key and IV.");
     }
 
     // Encrypt the data
-    secure_bytes ciphertext(plain.size() + EVP_MAX_BLOCK_LENGTH); // Allocate enough space
+    std::vector<uint8_t> ciphertext(plain.size() + EVP_MAX_BLOCK_LENGTH); // Allocate enough space
     int len = 0;
     int ciphertext_len = 0;
 
     // Encrypt the plaintext
     if (1 != EVP_EncryptUpdate(ctx_handle->get(), ciphertext.data(), &len, plain.data(), static_cast<int>(plain.size()))) {
-        return Result<secure_bytes>::err("Encryption failed during EVP_EncryptUpdate.");
+        return Result<std::vector<uint8_t>>::err("Encryption failed during EVP_EncryptUpdate.");
     }
     ciphertext_len = len;
 
     // Finalize encryption
     if (1 != EVP_EncryptFinal_ex(ctx_handle->get(), ciphertext.data() + len, &len)) {
-        return Result<secure_bytes>::err("Encryption failed during EVP_EncryptFinal_ex.");
+        return Result<std::vector<uint8_t>>::err("Encryption failed during EVP_EncryptFinal_ex.");
     }
     ciphertext_len += len;
 
     // Verify ciphertext size matches plaintext size
     if (ciphertext_len != static_cast<int>(plain.size())) {
-        return Result<secure_bytes>::err("Ciphertext size does not match plaintext size.");
+        return Result<std::vector<uint8_t>>::err("Ciphertext size does not match plaintext size.");
     }
 
     // Get the authentication tag
     if (1 != EVP_CIPHER_CTX_ctrl(ctx_handle->get(), EVP_CTRL_GCM_GET_TAG, static_cast<int>(outTag.size()), outTag.data())) {
-        return Result<secure_bytes>::err("Failed to retrieve authentication tag.");
+        return Result<std::vector<uint8_t>>::err("Failed to retrieve authentication tag.");
     }
 
     // Resize the ciphertext to the actual size
     ciphertext.resize(ciphertext_len);
 
-    return Result<secure_bytes>::ok(ciphertext);
+    return Result<std::vector<uint8_t>>::ok(ciphertext);
 }
 
-neonfs::Result<neonfs::secure_bytes> neonfs::security::AESEncryptionProvider::decrypt(const secure_bytes &cipher, const secure_bytes &iv, secure_bytes &tag) {
+neonfs::Result<neonfs::secure_bytes> neonfs::security::AESEncryptionProvider::decrypt(const std::vector<uint8_t> &cipher, const std::vector<uint8_t> &iv, std::vector<uint8_t> &tag) {
     // Validate all inputs before processing
     if (key_.size() != 32) {
         return Result<secure_bytes>::err(

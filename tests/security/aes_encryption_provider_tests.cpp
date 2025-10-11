@@ -32,7 +32,7 @@ protected:
 
 // Basic Functionality
 TEST_F(AESEncryptionProviderTest, EncryptDecryptRoundtrip) {
-    secure_bytes iv, tag;
+    std::vector<uint8_t> iv, tag;
     auto encryptResult = provider->encrypt(testData, iv, tag);
     ASSERT_TRUE(encryptResult.is_ok());
 
@@ -42,7 +42,7 @@ TEST_F(AESEncryptionProviderTest, EncryptDecryptRoundtrip) {
 }
 
 TEST_F(AESEncryptionProviderTest, DifferentIVEachTime) {
-    secure_bytes iv1, iv2, tag1, tag2;
+    std::vector<uint8_t> iv1, iv2, tag1, tag2;
     provider->encrypt(testData, iv1, tag1);
     provider->encrypt(testData, iv2, tag2);
 
@@ -51,7 +51,7 @@ TEST_F(AESEncryptionProviderTest, DifferentIVEachTime) {
 }
 
 TEST_F(AESEncryptionProviderTest, TamperDetection) {
-    secure_bytes iv, tag;
+    std::vector<uint8_t> iv, tag;
     auto cipher = provider->encrypt(testData, iv, tag).unwrap();
 
     // Tamper with ciphertext
@@ -62,7 +62,7 @@ TEST_F(AESEncryptionProviderTest, TamperDetection) {
 }
 
 TEST_F(AESEncryptionProviderTest, TamperedIVDetection) {
-    secure_bytes iv, tag;
+    std::vector<uint8_t> iv, tag;
     auto cipher = provider->encrypt(testData, iv, tag).unwrap();
 
     // Tamper with IV
@@ -73,7 +73,7 @@ TEST_F(AESEncryptionProviderTest, TamperedIVDetection) {
 }
 
 TEST_F(AESEncryptionProviderTest, TamperedTagDetection) {
-    secure_bytes iv, tag;
+    std::vector<uint8_t> iv, tag;
     auto cipher = provider->encrypt(testData, iv, tag).unwrap();
 
     // Tamper with tag
@@ -85,32 +85,35 @@ TEST_F(AESEncryptionProviderTest, TamperedTagDetection) {
 
 // Edge Cases
 TEST_F(AESEncryptionProviderTest, EmptyPlaintext) {
-    secure_bytes iv, tag;
+    std::vector<uint8_t> iv, tag;
     auto result = provider->encrypt({}, iv, tag);
     ASSERT_TRUE(result.is_ok());
     EXPECT_TRUE(result.unwrap().empty());
 }
 
 TEST_F(AESEncryptionProviderTest, LargeData) {
-    std::cout << "before test scope heap usage: " << CRYPTO_secure_used() << "\n";
+    size_t init_usage = CRYPTO_secure_used();
+    std::cout << "before test scope heap usage: " << init_usage << "\n";
+
     {
-        std::cout << "begin of test scope Secure heap status:\n" << "  Used: " << CRYPTO_secure_used() << " bytes\n";
-        secure_bytes largeData(5 * 1024 * 1024, 0x42); // 10MB of data
-        secure_bytes iv, tag;
-        std::cout << "after alocating vars Secure heap status:\n" << "  Used: " << CRYPTO_secure_used() << " bytes\n";
+        std::cout << "begin of test scope Secure heap status:\n" << "  Used: " << CRYPTO_secure_used() - init_usage << " bytes\n";
+        secure_bytes largeData(8 * 1024 * 1024, 0x42); // 8MB of data
+        std::vector<uint8_t> iv, tag;
+        std::cout << "after alocating vars Secure heap status:\n" << "  Used: " << CRYPTO_secure_used() - init_usage << " bytes\n";
 
         auto encryptResult = provider->encrypt(largeData, iv, tag);
-        std::cout << "after encrypt Secure heap status:\n" << "  Used: " << CRYPTO_secure_used() << " bytes\n";
+        std::cout << "after encrypt Secure heap status:\n" << "  Used: " << CRYPTO_secure_used() - init_usage << " bytes\n";
 
         ASSERT_TRUE(encryptResult.is_ok());
 
         auto decryptResult = provider->decrypt(encryptResult.unwrap(), iv, tag);
-        std::cout << "after decrypt Secure heap status:\n" << "  Used: " << CRYPTO_secure_used() << " bytes\n";
+        std::cout << "after decrypt Secure heap status:\n" << "  Used: " << CRYPTO_secure_used() - init_usage << " bytes\n";
         ASSERT_TRUE(decryptResult.is_ok());
         EXPECT_EQ(decryptResult.unwrap(), largeData);
-        std::cout << "end of test scope Secure heap status:\n" << "  Used: " << CRYPTO_secure_used() << " bytes\n";
+        std::cout << "end of test scope Secure heap status:\n" << "  Used: " << CRYPTO_secure_used() - init_usage << " bytes\n";
     }
-    std::cout << "after test scope heap usage: " << CRYPTO_secure_used() << "\n";
+    std::cout << "after test scope heap usage: " << CRYPTO_secure_used() - init_usage << "\n";
+    EXPECT_EQ(init_usage, CRYPTO_secure_used()) << "Memory leak!";
 }
 
 // Thread Safety
@@ -119,7 +122,7 @@ TEST_F(AESEncryptionProviderTest, ThreadSafety) {
     constexpr int kIterations = 100;
 
     std::vector<std::future<void>> futures;
-    secure_bytes iv, tag;
+    std::vector<uint8_t> iv, tag;
     auto cipher = provider->encrypt(testData, iv, tag).unwrap();
 
     for (int i = 0; i < kThreads; ++i) {
@@ -163,8 +166,8 @@ TEST_F(AESEncryptionProviderTest, ConstantSizes) {
 
 TEST_F(AESEncryptionProviderTest, ParallelLargeDataEncryption) {
     using namespace neonfs;
-    const size_t TOTAL_SIZE = 100 * 1024 * 1024; // 100MB
-    const size_t CHUNK_SIZE = 512 * 1024;         // 512KB chunks
+    constexpr size_t TOTAL_SIZE = 100 * 1024 * 1024; // 100MB
+    constexpr size_t CHUNK_SIZE = 512 * 1024;         // 512KB chunks
     const size_t NUM_THREADS = std::thread::hardware_concurrency();
     size_t secureHeapPeak = CRYPTO_secure_used();
 
@@ -181,7 +184,7 @@ TEST_F(AESEncryptionProviderTest, ParallelLargeDataEncryption) {
 
     // 4. Parallel processing function
     auto processChunk = [&](const size_t start, const size_t end) {
-        secure_bytes iv(12), tag(16);
+        std::vector<uint8_t> iv(12), tag(16);
         size_t localProcessed = 0;
 
         for (size_t offset = start; offset < end; offset += CHUNK_SIZE) {

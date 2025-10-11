@@ -117,6 +117,21 @@ TEST(SecureAllocatorTest, SecureStringMemoryIsZeroedOnDeallocate) {
     EXPECT_TRUE(all_zero) << "Memory was not securely wiped after deallocation";
 }
 
+TEST(SecureAllocatorTest, SecureMemoryAllocationPattern) {
+    const size_t baseline = CRYPTO_secure_used();
+    std::cout << "baseline: " << baseline << " bytes\n";
+
+    for (int i = 512; i < 30*1024; i*=1.5) {
+        const size_t bytes = i * 1024;
+        secure_bytes s(bytes, 0x42);
+        const size_t used = CRYPTO_secure_used();
+        const size_t actual = CRYPTO_secure_actual_size(s.data());
+        std::cout << "requested: " << i << " KiB"
+                      << "  requested_bytes: " << bytes
+                      << "  secure_used_delta: " << (used - baseline) << " bytes, actual: " << actual << ", Effective Factor: ~" << std::format("{:.2f}", static_cast<double>(used) / (i*1024)) << "x" << "\n";
+    }
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
 
