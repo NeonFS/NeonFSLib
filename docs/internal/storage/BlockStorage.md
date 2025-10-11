@@ -23,12 +23,15 @@ It is designed for thread-safe, direct block manipulation, making it a foundatio
 
 ## Configuration
 
-Operations rely on the `BlockStorageConfig` struct to define the geometry of the storage file.
+Operations rely on the `StorageConfig` struct to define the geometry of the storage file.
 
 ```cpp
-struct BlockStorageConfig {
-    size_t block_size; // Size of each block in bytes (e.g., 4096)
-    size_t total_size; // Total size of the storage file in bytes
+struct StorageConfig {
+    std::string resource_uri;
+    uint64_t block_size; // Size of each block in bytes (e.g., 4096)
+    uint64_t total_size; // Total size of the storage file in bytes
+    uint64_t initial_capacity;  // Initial capacity (0 = no limit)
+    size_t max_concurrent_ops;  // Maximum concurrent operations
 };
 ```
 
@@ -48,11 +51,11 @@ The destructor automatically calls `unmount()` if the storage is currently mount
 
 ### Lifecycle Management
 
-**`static Result<void> create(std::string path, BlockStorageConfig config)`**
-A static utility method that creates a new, empty storage file at the given `path`. The file is pre-allocated to `config.total_size` and zero-filled. This must be called before a new storage file can be mounted.
+**`static Result<void> create(StorageConfig config)`**
+A static utility method that creates a new, empty storage file at the given `config.resource_uri`. The file is pre-allocated to `config.total_size` and zero-filled. This must be called before a new storage file can be mounted.
 
-**`Result<void> mount(std::string path, const BlockStorageConfig& config)`**
-Opens the storage file at the specified `path` for reading and writing. The file must already exist. This method prepares the `BlockStorage` instance for I/O operations.
+**`Result<void> mount(const StorageConfig& config)`**
+Opens the storage file at the specified `config.resource_uri` for reading and writing. The file must already exist. This method prepares the `BlockStorage` instance for I/O operations.
 
 **`Result<void> unmount()`**
 Closes the file handle, effectively unmounting the storage. No further I/O can be performed until `mount()` is called again.

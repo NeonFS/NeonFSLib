@@ -12,8 +12,8 @@ protected:
     void SetUp() override {
         // Create a temporary test file
         test_file = fs::temp_directory_path() / "block_storage_test.bin";
-        config = {4096, 4096 * 100}; // 100 blocks of 4KB each
-        BlockStorage::create(test_file.string(), config).unwrap();
+        config = {test_file.string(), 4096, 4096 * 100}; // 100 blocks of 4KB each
+        BlockStorage::create(config).unwrap();
     }
 
     void TearDown() override {
@@ -23,18 +23,28 @@ protected:
     }
 
     fs::path test_file;
-    neonfs::BlockStorageConfig config = {};
+    neonfs::StorageConfig config = {};
 };
 
 TEST_F(BlockStorageTest, CreateStorage) {
     // Test creation with invalid parameters
-    EXPECT_TRUE(BlockStorage::create("", config).is_err());
-    EXPECT_TRUE(BlockStorage::create("test.bin", {0, 4096}).is_err());
-    EXPECT_TRUE(BlockStorage::create("test.bin", {512, 1000}).is_err()); // Not multiple
+    neonfs::StorageConfig _config = config;
+    _config.resource_uri = "";
+    EXPECT_TRUE(BlockStorage::create(_config).is_err());
+    _config.resource_uri = "test.bin";
+    _config.block_size = 0;
+    _config.total_size = 4096;
+    EXPECT_TRUE(BlockStorage::create(_config).is_err());
+    _config.block_size = 512;
+    _config.total_size = 1000;
+    EXPECT_TRUE(BlockStorage::create(_config).is_err()); // Not multiple
 
     // Test valid creation
     auto temp_file = fs::temp_directory_path() / "valid_create.bin";
-    auto result = BlockStorage::create(temp_file.string(), {512, 512*10});
+    _config.resource_uri = temp_file.string();
+    _config.block_size = 512;
+    _config.total_size = 512*10;
+    auto result = BlockStorage::create(_config);
     EXPECT_TRUE(result.is_ok());
     EXPECT_TRUE(fs::file_size(temp_file) == 512*10);
     fs::remove(temp_file);
@@ -42,19 +52,20 @@ TEST_F(BlockStorageTest, CreateStorage) {
 
 TEST_F(BlockStorageTest, MountUnmount) {
     BlockStorage storage;
-
+    neonfs::StorageConfig _config = config;
     // Test unmount when not mounted
     EXPECT_TRUE(storage.unmount().is_err());
 
     // Test mount with invalid path
-    EXPECT_TRUE(storage.mount("", config).is_err());
+    _config.resource_uri = "";
+    EXPECT_TRUE(storage.mount(_config).is_err());
 
     // Test valid mount
-    EXPECT_TRUE(storage.mount(test_file.string(), config).is_ok());
+    EXPECT_TRUE(storage.mount(config).is_ok());
     EXPECT_TRUE(storage.isMounted());
 
     // Test double mount
-    EXPECT_TRUE(storage.mount(test_file.string(), config).is_err());
+    EXPECT_TRUE(storage.mount(config).is_err());
 
     // Test valid unmount
     EXPECT_TRUE(storage.unmount().is_ok());
@@ -63,7 +74,7 @@ TEST_F(BlockStorageTest, MountUnmount) {
 
 TEST_F(BlockStorageTest, ReadWriteOperations) {
     BlockStorage storage;
-    storage.mount(test_file.string(), config).unwrap();
+    storage.mount(config).unwrap();
 
     // Test read invalid block
     EXPECT_TRUE(storage.readBlock(1000).is_err()); // Beyond block count
@@ -99,7 +110,7 @@ TEST_F(BlockStorageTest, ReadWriteOperations) {
 
 TEST_F(BlockStorageTest, Concurrency) {
     BlockStorage storage;
-    storage.mount(test_file.string(), config).unwrap();
+    storage.mount(config).unwrap();  
 
     constexpr int num_threads = 4;
     constexpr int blocks_per_thread = 10;
@@ -126,10 +137,13 @@ TEST_F(BlockStorageTest, Concurrency) {
 TEST_F(BlockStorageTest, EdgeCases) {
     // Test with minimum block size
     auto small_file = fs::temp_directory_path() / "small_blocks.bin";
-    BlockStorage::create(small_file.string(), {512, 512*5}).unwrap();
+    neonfs::StorageConfig _config = {
+      small_file.string(), 512, 512*5
+    };
+    BlockStorage::create(_config).unwrap();
     
     BlockStorage small_storage;
-    small_storage.mount(small_file.string(), {512, 512*5}).unwrap();
+    small_storage.mount(_config).unwrap();
     
     std::vector<uint8_t> small_data(512, 0xEE);
     EXPECT_TRUE(small_storage.writeBlock(2, small_data).is_ok());
@@ -142,10 +156,13 @@ TEST_F(BlockStorageTest, EdgeCases) {
 
     // Test with large block size
     auto large_file = fs::temp_directory_path() / "large_blocks.bin";
-    BlockStorage::create(large_file.string(), {1024*1024, 1024*1024*2}).unwrap();
+    neonfs::StorageConfig _config2 = {
+      small_file.string(), 1024*1024, 1024*1024*2
+    };
+    BlockStorage::create(_config2).unwrap();
     
     BlockStorage large_storage;
-    large_storage.mount(large_file.string(), {1024*1024, 1024*1024*2}).unwrap();
+    large_storage.mount(_config2).unwrap();
     
     std::vector<uint8_t> large_data(1024*1024, 0xFF);
     EXPECT_TRUE(large_storage.writeBlock(1, large_data).is_ok());
@@ -158,7 +175,9 @@ TEST_F(BlockStorageTest, FileValidation) {
     // 1. Test non-existent file
     {
         BlockStorage storage;
-        auto result = storage.mount("nonexistent.bin", config);
+        neonfs::StorageConfig _config = config;
+        _config.resource_uri = "nonexistent.bin";
+        auto result = storage.mount(_config);
         EXPECT_TRUE(result.is_err());
         EXPECT_EQ(result.unwrap_err().code, -4);
     }
@@ -173,7 +192,10 @@ TEST_F(BlockStorageTest, FileValidation) {
         }
 
         BlockStorage storage;
-        auto result = storage.mount(corrupt_file.string(), config);
+
+        neonfs::StorageConfig _config = config;
+        _config.resource_uri = corrupt_file.string();
+        auto result = storage.mount(_config);
         EXPECT_TRUE(result.is_err());
         EXPECT_EQ(result.unwrap_err().code, -5);
 
@@ -186,7 +208,10 @@ TEST_F(BlockStorageTest, FileValidation) {
         fs::create_directory(temp_dir);
 
         BlockStorage storage;
-        auto result = storage.mount(temp_dir.string(), config);
+
+        neonfs::StorageConfig _config = config;
+        _config.resource_uri = temp_dir.string();
+        auto result = storage.mount(_config);
         EXPECT_TRUE(result.is_err());
         EXPECT_EQ(result.unwrap_err().code, -4);
 
@@ -198,7 +223,10 @@ TEST_F(BlockStorageTest, ConfigValidation) {
     // 1. Test invalid block size (0)
     {
         BlockStorage storage;
-        auto result = storage.mount(test_file.string(), {0, 4096*100});
+        neonfs::StorageConfig _config = {
+          test_file.string(), 0, 4096*100
+        };
+        auto result = storage.mount(_config);
         EXPECT_TRUE(result.is_err());
         EXPECT_EQ(result.unwrap_err().code, -6);
     }
@@ -206,18 +234,32 @@ TEST_F(BlockStorageTest, ConfigValidation) {
 
 TEST_F(BlockStorageTest, PerformanceBenchmark) {
     BlockStorage storage;
-    storage.mount(test_file.string(), config).unwrap();
+    storage.mount(config).unwrap();  
 
-    constexpr int iterations = 10000;
+    constexpr uint64_t iterations = 10000;
+    size_t total_bytes = iterations * 4096;
+    double total_mb = static_cast<double>(total_bytes) / (1024.0 * 1024.0);
     std::vector<uint8_t> data(4096, 0xAA);
 
     auto start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iterations; i++) {
         storage.writeBlock(i % 100, data).unwrap();
     }
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::high_resolution_clock::now() - start);
+    int64_t duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::high_resolution_clock::now() - start).count();
 
+    std::cout << "Write " << total_mb << "MB in " << duration << " milliseconds\n";
     std::cout << "Write performance: "
-              << (iterations * 4) / duration.count() << " MB/s\n";
+              << (total_mb / (static_cast<double>(duration) / 1000.0)) << " MB/s\n";
+
+    start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < iterations; i++) {
+        storage.readBlock(i % 100).unwrap();
+    }
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::high_resolution_clock::now() - start).count();
+
+    std::cout << "Read " << total_mb << "MB in " << duration << " milliseconds\n";
+    std::cout << "Read performance: "
+              << (total_mb / (static_cast<double>(duration) / 1000.0)) << " MB/s\n";
 }

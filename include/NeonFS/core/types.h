@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <array>
 #include "secure_allocator.hpp"
 
 namespace neonfs {
@@ -37,35 +38,40 @@ namespace neonfs {
     template<typename Key, typename T, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
     using secure_unordered_map = std::unordered_map<Key, T, Hash, KeyEqual, secure_allocator<std::pair<const Key, T>>>;
 
-    struct BlockStorageConfig {
-        size_t block_size;
-        size_t total_size;
+    enum class StorageErrorCode : int {
+        SUCCESS = 0,
+        INVALID_BLOCK_ID,           // Block ID out of range
+        BLOCK_NOT_FOUND,            // Requested block doesn't exist
+        STORAGE_FULL,               // No space available
+        IO_ERROR,                   // Low-level I/O error
+        PERMISSION_DENIED,          // Insufficient permissions
+        NOT_INITIALIZED,            // Provider not initialized
+        ALREADY_EXISTS,             // Block already exists
+        TRANSACTION_ERROR,          // Transaction-related error
+        INVALID_PARAMETER,          // Invalid input parameters
+        UNSUPPORTED_OPERATION,      // Operation not supported by this provider
+        TIMEOUT,                    // Operation timed out
+        CORRUPTION_DETECTED         // Data corruption detected
     };
 
-    /**
-     * @brief Represents a block entry associated with a file.
-     */
-    struct BlockInfo {
-        uint64_t blockId;                   // Block ID
-        uint64_t offset;                    // Offset in file
-        std::vector<uint8_t> iv;            // Initialization vector for encryption
-        std::vector<uint8_t> tag;           // Authentication tag (GCM)
+    // Storage capacity and usage information
+    struct StorageStats {
+        uint64_t total_capacity;        // Total storage capacity in bytes
+        uint64_t used_space;            // Currently used space in bytes
+        uint64_t available_space;       // Available space in bytes
+        uint64_t block_count;           // Total number of blocks
+        uint64_t block_size;            // Size of each block in bytes
+        uint64_t reserved_blocks;       // Number of reserved blocks
+        std::chrono::system_clock::time_point last_updated;
     };
 
-    /**
-     * @brief Represents metadata associated with a file or directory in NeonFS.
-     */
-    struct Metadata {
-        uint64_t fileId;                    // Unique file or directory identifier
-        std::string filename;               // Name of the file or directory
-        uint64_t size;                      // Total size (0 for directories)
-        uint64_t timestamp_created;         // Creation timestamp (epoch)
-        uint64_t timestamp_modified;        // Last-modified timestamp (epoch)
-        uint32_t permissions;               // Permission bitmask
-        bool isDirectory;                   // True if this is a directory
-        uint64_t parentId;                  // ID of the parent directory (0 for root)
-
-        std::vector<BlockInfo> blocks;      // Ordered list of associated blocks (empty for directories)
+    // Storage configuration
+    struct StorageConfig {
+        std::string resource_uri;
+        uint64_t block_size;        // Size of each block in bytes (e.g., 4096)
+        uint64_t total_size;        // Total size of the storage file in bytes
+        uint64_t initial_capacity;  // Initial capacity (0 = no limit)
+        size_t max_concurrent_ops;  // Maximum concurrent operations
     };
 
 } // namespace neonfs

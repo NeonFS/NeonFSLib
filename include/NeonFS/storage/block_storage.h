@@ -18,16 +18,18 @@ namespace neonfs::storage {
         BlockStorage();
         ~BlockStorage() override;
 
-        Result<void> mount(std::string _path, const BlockStorageConfig &_config);
-        Result<void> unmount();
-        bool isMounted() const;
-        static Result<void> create(std::string path, BlockStorageConfig config);
+        Result<void> mount(const StorageConfig &_config) override;
+        Result<void> unmount() override;
+        [[nodiscard]] bool isMounted() const override;
+        static Result<void> create(const StorageConfig& config);
 
         Result<std::vector<uint8_t>> readBlock(uint64_t blockID) override;
         Result<void> writeBlock(uint64_t blockID, std::vector<uint8_t>& data) override;
         [[nodiscard]] uint64_t getBlockCount() const override;
         [[nodiscard]] uint64_t getBlockSize() const override;
 
-        Result<void> flush();
+        Result<void> resizeStorage(uint64_t newBlockCount) override;
+
+        Result<void> flush() override;
     };
 }// namespace neonfs::storage

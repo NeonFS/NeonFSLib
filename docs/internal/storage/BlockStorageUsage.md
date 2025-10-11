@@ -23,19 +23,19 @@ Before you can use a storage volume, you must create its backing file. This is d
 #include <iostream>
 
 void create_new_volume() {
-    const std::string storage_path = "my_volume.dat";
-    neonfs::BlockStorageConfig config;
+    neonfs::StorageConfig config;
+    config.resource_uri = "my_volume.dat";
     config.block_size = 4096; // 4 KB blocks
     config.total_size = 16 * 1024 * 1024; // 16 MB total size
 
     // Create the file and pre-allocate its size
-    auto create_res = neonfs::storage::BlockStorage::create(storage_path, config);
+    auto create_res = neonfs::storage::BlockStorage::create(config);
 
     if (create_res.is_err()) {
         std::cerr << "Failed to create volume: " 
                   << create_res.unwrap_err().message << std::endl;
     } else {
-        std::cout << "Volume created successfully at " << storage_path << std::endl;
+        std::cout << "Volume created successfully at " << config.resource_uri << std::endl;
     }
 }
 ```
@@ -48,14 +48,13 @@ To interact with an existing storage file, you must first instantiate `BlockStor
 #include <NeonFS/storage/block_storage.h>
 
 // Use the same config that the volume was created with
-const std::string storage_path = "my_volume.dat";
-neonfs::BlockStorageConfig config = {4096, 16 * 1024 * 1024};
+neonfs::BlockStorageConfig config = {"my_volume.dat", 4096, 16 * 1024 * 1024};
 
 // 1. Construct the manager object
 neonfs::storage::BlockStorage storage();
 
 // 2. Mount the volume to open the file
-auto mount_res = storage.mount(storage_path, config);
+auto mount_res = storage.mount(config);
 if (mount_res.is_err()) {
     std::cerr << "Failed to mount volume: " 
               << mount_res.unwrap_err().message << std::endl;
