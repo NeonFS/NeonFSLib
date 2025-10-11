@@ -203,7 +203,7 @@ TEST_F(AESEncryptionProviderTest, ParallelLargeDataEncryption) {
             {
                 std::lock_guard<std::mutex> lock(encryptionMutex);
                 secureHeapPeak = CRYPTO_secure_used() > secureHeapPeak ? CRYPTO_secure_used() : secureHeapPeak;
-                std::copy(cipher.begin(), cipher.end(),
+                std::ranges::copy(cipher,
                          encryptedData.begin() + offset);
             }
 

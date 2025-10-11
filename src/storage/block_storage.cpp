@@ -24,7 +24,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::mount(const StorageConfig &_
         return Result<void>::err("Path is not a valid file", -4);
     }
 
-    if (auto file_size = std::filesystem::file_size(_path, ec); ec || file_size != _config.total_size) {
+    if (const auto file_size = std::filesystem::file_size(_path, ec); ec || file_size != _config.total_size) {
         return Result<void>::err("File size doesn't match configuration", -5);
     }
 
@@ -68,17 +68,17 @@ neonfs::Result<void> neonfs::storage::BlockStorage::create(const StorageConfig& 
     const std::string path = config.resource_uri;
     if (config.block_size == 0) return Result<void>::err("Block size cannot be zero", -4);
     if (config.total_size % config.block_size != 0) {
-        return Result<void>::err("Total size must be a multiple of block size", -5);
+      return Result<void>::err("Total size must be a multiple of block size", -5);
     }
 
-    size_t block_count = config.total_size / config.block_size;
+    const size_t block_count = config.total_size / config.block_size;
     if (block_count < 1) return Result<void>::err("Invalid block count", -1);
     if (path.empty()) return Result<void>::err("Mount path cannot be empty", -2);
     std::ofstream c_filestream(path, std::ios::binary);
     if (!c_filestream.is_open()) return Result<void>::err("Failed to open storage file: " + path, -3);
 
     // Write empty blocks
-    std::vector<uint8_t> empty_block(config.block_size, 0);
+    const std::vector<uint8_t> empty_block(config.block_size, 0);
     for (size_t i = 0; i < block_count; i++) {
         c_filestream.write(reinterpret_cast<const char*>(empty_block.data()), empty_block.size());
     }
@@ -87,7 +87,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::create(const StorageConfig& 
     return Result<void>::ok();
 }
 
-neonfs::Result<std::vector<unsigned char> > neonfs::storage::BlockStorage::readBlock(uint64_t blockID) {
+neonfs::Result<std::vector<unsigned char> > neonfs::storage::BlockStorage::readBlock(const uint64_t blockID) {
     std::lock_guard lock(file_stream_mutex);
     if (!is_mounted) {
         return Result<std::vector<uint8_t>>::err("Storage is not mounted", -1);
@@ -112,7 +112,7 @@ neonfs::Result<std::vector<unsigned char> > neonfs::storage::BlockStorage::readB
     return Result<std::vector<uint8_t>>::ok(std::move(data));
 }
 
-neonfs::Result<void> neonfs::storage::BlockStorage::writeBlock(uint64_t blockID, std::vector<uint8_t> &data) {
+neonfs::Result<void> neonfs::storage::BlockStorage::writeBlock(const uint64_t blockID, std::vector<uint8_t> &data) {
     if (!is_mounted) {
         return Result<void>::err("Storage is not mounted", -1);
     }
@@ -123,7 +123,9 @@ neonfs::Result<void> neonfs::storage::BlockStorage::writeBlock(uint64_t blockID,
 
     if (data.size() > block_size_ ) {
         return Result<void>::err("Data size exceeds block size", -3);
-    } else if (data.size() < block_size_) {
+    }
+
+    if (data.size() < block_size_) {
         std::vector<uint8_t> padding(block_size_ - data.size(), 0);
         data.insert(data.end(), padding.begin(), padding.end());
     }
@@ -191,7 +193,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::resizeStorage(const uint64_t
 
     if (newBlockCount > total_blocks_) {
         filestream.seekp(0, std::ios::end);
-        std::vector<uint8_t> empty_block(block_size_, 0);
+        const std::vector<uint8_t> empty_block(block_size_, 0);
         for (uint64_t i = total_blocks_; i < newBlockCount; i++) {
             filestream.write(reinterpret_cast<const char*>(empty_block.data()), block_size_);
             if (!filestream) {

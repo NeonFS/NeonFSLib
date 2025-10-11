@@ -37,7 +37,7 @@ namespace neonfs {
             return std::get<T>(data_);
         }
 
-        const T& unwrap() const {
+        [[nodiscard]] const T& unwrap() const {
             if (is_err()) {
                 throw std::runtime_error("Attempted to unwrap error result: " + std::get<Error>(data_).message);
             }
@@ -78,7 +78,7 @@ namespace neonfs {
             );
         }
 
-        T unwrap_or(T default_val) const {
+        [[nodiscard]] T unwrap_or(T default_val) const {
             return is_ok() ? std::get<T>(data_) : default_val;
         }
 

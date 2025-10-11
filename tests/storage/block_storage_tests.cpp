@@ -96,7 +96,7 @@ TEST_F(BlockStorageTest, ReadWriteOperations) {
     std::uniform_int_distribution<> distrib(0, 255);
 
     std::vector<uint8_t> test_data(4096);
-    std::generate(test_data.begin(), test_data.end(), [&](){ return distrib(gen); });
+    std::ranges::generate(test_data, [&](){ return distrib(gen); });
 
     auto b = storage.writeBlock(5, test_data);
     EXPECT_TRUE(b.is_ok()) << b.unwrap_err().message;

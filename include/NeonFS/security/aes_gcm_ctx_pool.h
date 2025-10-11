@@ -26,7 +26,7 @@ namespace neonfs::security {
             Handle& operator=(Handle&& other) noexcept;
         };
 
-        AESGCMCtxPool(size_t maxSize);
+        explicit AESGCMCtxPool(size_t maxSize);
         static std::shared_ptr<AESGCMCtxPool> create(size_t maxSize);
         Handle acquire();
         size_t availableCount();

@@ -47,8 +47,8 @@ TEST(SecureAllocatorTest, SecureUnorderedSetBasicUsage) {
     s.insert('b');
     s.insert('c');
 
-    EXPECT_TRUE(s.find('b') != s.end());
-    EXPECT_FALSE(s.find('z') != s.end());
+    EXPECT_TRUE(s.contains('b'));
+    EXPECT_FALSE(s.contains('z'));
 }
 
 TEST(SecureAllocatorTest, SecureMapBasicUsage) {
@@ -93,7 +93,7 @@ TEST(SecureAllocatorTest, SecureStringMemoryIsZeroedOnDeallocate) {
         s[0] = 'S'; // Make sure it's non-empty
 
         // Save internal pointer before destruction
-        raw_ptr = const_cast<char*>(s.data());
+        raw_ptr = s.data();
 
         // Ensure data is there
         ASSERT_STREQ(raw_ptr, "SuperSecret123456");

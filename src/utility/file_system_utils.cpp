@@ -86,13 +86,12 @@ std::string neonfs::utility::getParentPath(const std::string &path) {
 bool neonfs::utility::isReservedWindowsName(const std::string &name) {
     // Extract base name (remove extension)
     std::string base = name;
-    size_t dot_pos = base.find('.');
-    if (dot_pos != std::string::npos) {
+    if (const size_t dot_pos = base.find('.'); dot_pos != std::string::npos) {
         base = base.substr(0, dot_pos);
     }
 
     // Convert to uppercase
-    std::ranges::transform(base, base.begin(), [](char c) {
+    std::ranges::transform(base, base.begin(), [](const char c) {
         return static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
     });
 

@@ -1,6 +1,5 @@
 #pragma once
 #include <openssl/crypto.h>
-#include <memory>
 #include <limits>
 #include <new>
 #include <type_traits>

@@ -18,8 +18,8 @@ namespace neonfs {
             const std::vector<uint8_t>& iv,
             std::vector<uint8_t>& tag) = 0;
 
-        virtual size_t iv_size() const = 0;
-        virtual size_t tag_size() const = 0;
+        [[nodiscard]] virtual size_t iv_size() const = 0;
+        [[nodiscard]] virtual size_t tag_size() const = 0;
     };
 
     class IStorageProvider {
@@ -35,7 +35,7 @@ namespace neonfs {
         virtual  Result<void> unmount() = 0;
 
         // Returns true if the storage provider is properly initialized.
-        virtual bool isMounted() const = 0;
+        [[nodiscard]] virtual bool isMounted() const = 0;
 
         // Block Operations //
 
