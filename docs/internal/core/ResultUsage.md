@@ -155,7 +155,7 @@ auto vital_resource = load_resource().unwrap();
 These methods convert to other types that represent optionality, which is useful when interacting with other APIs.
 
 -   **`to_optional()`**: Converts `Result<T>` to `std::optional<T>`. An `err` becomes `std::nullopt`.
--   **`try_unwrap()`**: Returns a `std::optional<std::reference_wrapper<T>>` (or `bool` for `Result<void>`). Useful for getting a reference without a copy.
+-   **`try_unwrap()`**: Returns a `std::optional<std::reference_wrapper<T>>` (or `std::optional<std::monostate>` for `Result<void>`). Useful for getting a reference without a copy.
 
 ```cpp
 // Interacting with an API that uses std::optional
