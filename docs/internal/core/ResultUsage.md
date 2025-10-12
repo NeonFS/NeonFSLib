@@ -6,19 +6,20 @@ This document explains how to effectively use the `Result<T>` type with practica
 
 ## Creating a `Result`
 
-All operations start by creating a `Result` to represent either success (`ok`) or failure (`err`).
-
--   **`Result<T>::ok(value)`**: Creates a success result containing a value.
--   **`Result<void>::ok()`**: Creates a success result indicating an operation completed with no return value.
--   **`Result<T>::err(message, code)`**: Creates a failure result with an error message and an optional error code.
+You can create a success (`ok`) or error (`err`) result. The `ok` method allows in-place construction of the contained value, making it more convenient.
 
 ```cpp
-// Success with a value
-auto success = Result<int>::ok(100);
+// Create a success Result with a value
+auto success = neonfs::Result<int>::ok(42);
+
+// In-place construction for complex types
+auto text_result = neonfs::Result<std::string>::ok("hello world");
+
 // Success with no value
-auto void_success = Result<void>::ok();
-// Failure with a message and system error code
-auto failure = Result<std::vector<uint8_t>>::err("Could not read from socket", errno);
+auto void_success = neonfs::Result<void>::ok();
+
+// Create an error Result with a message
+auto error = neonfs::Result<int>::err("File not found");
 ```
 
 ## Returning and Handling a `Result`
@@ -39,57 +40,83 @@ Result<std::string> read_file(const std::string& path) {
 }
 ````
 
-### Handling Outcomes with `match` (Preferred Method)
+### Checking State and Accessing Values
 
-The `match` method is the safest and most expressive way to handle a `Result`, as it forces the compiler to ensure you have handled both `ok` and `err` states.
+The most idiomatic way to check a `Result` is to use it in a boolean context.
 
 ```cpp
-auto result = read_file("config.json");
-result.match(
-    // Lambda for the 'ok' case
-    [](const std::string& data) {
-        std::cout << "Read " << data.length() << " bytes." << std::endl;
-    },
-    // Lambda for the 'err' case
-    [](const Error& err) {
-        std::cerr << "Error: " << err.message << " (code " << err.code << ")\n";
-    }
+auto read_file(const std::string& path) -> neonfs::Result<std::string>;
+
+auto result = read_file("my_file.txt");
+
+if (result) { // The idiomatic check using operator bool
+    std::cout << "File content: " << result.unwrap() << std::endl;
+} else {
+    std::cerr << "Error: " << result.unwrap_err().message << std::endl;
+}
+```
+
+### Handling Outcomes with `match` (Preferred Method)
+
+Use `match()` to handle both success and error cases in a single, expressive statement. Both provided functions must return the same type.
+
+```cpp
+auto result = read_file("another_file.txt");
+
+std::string message = result.match(
+    [](const std::string& value) { return "File read successfully. Size: " + std::to_string(value.length()); },
+    [](const neonfs::Error& err) { return "File read failed: " + err.message; }
 );
+std::cout << message << std::endl;
 ```
 
 For `Result<void>`, the `ok` lambda takes no arguments:
 
 ```cpp
-auto void_result = Result<void>::err("Disk is full");
-void_result.
-    match(
-        [](){
-            std::cout << "Operation succeeded.\n";
-        },
-        [](const Error& err) {
-            std::cerr << "Operation failed: " << err. message << "\n";
-        }
-    );
+auto void_result = neonfs::Result<void>::err("Disk is full");
+void_result.match(
+    []() {
+        std::cout << "Operation succeeded.\n";
+    },
+    [](const neonfs::Error& err) {
+        std::cerr << "Operation failed: " << err.message << "\n";
+    }
+);
 ```
 
 ## Extracting the Value or Error
 
-### Safe Extraction (with defaults)
+### Safe Extraction (Unwrapping with defaults)
 
-These methods provide a safe way to get the value without checking `is_ok()` first.
-
--   **`unwrap_or(default_value)`**: Returns the contained value or a provided default.
--   **`unwrap_or_else(lambda)`**: Returns the contained value or computes a default from a lambda.
+When an operation fails, you can provide a default value or compute one.
 
 ```cpp
+auto config = neonfs::Result<int>::err("Not found");
+
 // Provide a simple default value
-int value = Result<int>::err("Not found").unwrap_or(42); // value is 42
+int port = config.unwrap_or(8080); // port is 8080
 
 // Compute a default value using a lambda
-int computed_value = Result<int>::err("Failed").unwrap_or_else([](const Error& err) {
-    std::cerr << "Error: " << err.message << std::endl;
-    return -1; // Your logic here
-}); // computed_value is -1
+int fallback_port = config.unwrap_or_else([](const neonfs::Error& e) {
+    std::cerr << "Config error: " << e.message << ". Using fallback." << std::endl;
+    return 9000; 
+}); // fallback_port is 9000
+```
+
+### Pointer-like Access
+
+For convenience, you can access the members of a success value directly using `->` and `*`. **This will throw an exception if the result is an error**.
+
+```cpp
+struct Config { std::string setting = "default"; };
+auto result = neonfs::Result<Config>::ok({});
+
+// Access member directly using ->
+std::cout << "Setting: " << result->setting << std::endl;
+
+// Dereference using *
+Config& cfg_ref = *result;
+std::cout << "Setting (via reference): " << cfg_ref.setting << std::endl;
 ```
 
 ### Unsafe Unwrapping
@@ -110,6 +137,7 @@ if (result.is_ok()) {
     const Error& err = result.unwrap_err();
 }
 ```
+
 ```cpp
 // In a test, where you know the result should be 'ok'.
 // This will throw if Result<int>::ok(5) were an error, failing the test.
@@ -119,7 +147,6 @@ ASSERT_EQ(Result<int>::ok(5).unwrap(), 5);
 // The program will crash with a clear message if the resource fails to load.
 auto vital_resource = load_resource().unwrap(); 
 ```
-
 
 ---
 
@@ -145,14 +172,33 @@ if (auto ref_opt = res.try_unwrap()) {
 
 ---
 
-## Functional Composition (Chaining)
+## Functional Chaining with Combinators
 
-These helpers allow you to build clean, readable data processing pipelines.
+Combinators enable clean, functional pipelines for complex operations where any step can fail.
 
--   **`map(lambda)`**: Transforms the value inside a `Result` if it is `ok`.
--   **`map_err(lambda)`**: Transforms the error inside a `Result` if it is `err`.
--   **`and_then(lambda)`**: Chains another operation that returns a `Result`.
--   **`or_else(lambda)`**: Provides a fallback operation that returns a `Result`.
+- **`and_then(fn)`**: If `ok`, calls `fn` with the value. `fn` must return a `Result`.
+- **`or_else(fn)`**: If `err`, calls `fn` with the error. `fn` must return a `Result`, allowing recovery.
+- **`map(fn)`**: If `ok`, applies a transformation to the value and wraps it in a new `Result`.
+- **`map_err(fn)`**: If `err`, applies a transformation to the error.
+
+```cpp
+// Functions that can fail
+auto get_config(const std::string& key) -> neonfs::Result<std::string>;
+auto to_int(const std::string& s) -> neonfs::Result<int>;
+
+// Attempt to get and parse a port number, with recovery
+auto result = get_config("port") // Might return err("Not found")
+    .or_else([](const neonfs::Error& e) -> neonfs::Result<std::string> {
+        std::cout << "Could not get port, falling back to default '8080'\n";
+        return neonfs::Result<std::string>::ok("8080"); // Recover
+    })
+    .and_then(to_int) // Chain the next fallible operation
+    .map([](int port) { return port + 1; }); // Transform the success value
+
+if (result) {
+    std::cout << "Next available port: " << *result << std::endl;
+}
+```
 
 ### `map` and `map_err`
 
@@ -235,7 +281,7 @@ try {
 }
 ```
 
-## ## N-API Integration Example
+## N-API Integration Example
 
 `Result` is ideal for bridging C++ and JavaScript, as it makes error propagation explicit.
 
