@@ -53,6 +53,11 @@ TEST(ResultTests, UnwrapVariantsError) {
         err_result.unwrap();
     }, std::runtime_error);
 
+    EXPECT_EQ("failback", err_result.unwrap_or("failback"));
+    EXPECT_EQ("failback_2", err_result.unwrap_or_else([&](const neonfs::Error& e) {
+      return std::string("failback_2");
+    }));
+
     auto opt = err_result.try_unwrap();
     EXPECT_FALSE(opt.has_value());
 }

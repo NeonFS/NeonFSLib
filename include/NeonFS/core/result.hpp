@@ -1,8 +1,10 @@
 #pragma once
 #include <optional>
 #include <stdexcept>
-#include <variant>
 #include <string>
+#include <variant>
+
+#include "result.hpp"
 #include "types.h"
 
 namespace neonfs {
@@ -12,11 +14,28 @@ namespace neonfs {
     template<>
     class Result<void>;
 
+    template<typename>
+    struct is_result : std::false_type {};
+    template<typename T>
+    struct is_result<Result<T>> : std::true_type {};
+    template<typename T>
+    inline constexpr bool is_result_v = is_result<T>::value;
+
+    template<typename F, typename T>
+    concept returns_result_for = std::invocable<F, T> && is_result_v<std::invoke_result_t<F, T>>;
+
     template<typename T>
     class Result {
     public:
         [[nodiscard]] static Result<T> ok(T value) {
             return Result<T>(std::move(value));
+        }
+
+        // allowing implicit construction of T inside ok(),
+        // Result<std::string>::ok("hi") works without writing std::string("hi").
+        template<typename U>
+        [[nodiscard]] static Result<T> ok(U&& value) {
+            return Result<T>(T(std::forward<U>(value)));
         }
 
         [[nodiscard]] static Result<T> err(const std::string &message, const int code = 0) {
@@ -29,119 +48,263 @@ namespace neonfs {
 
         [[nodiscard]] bool is_ok() const { return std::holds_alternative<T>(data_);  }
         [[nodiscard]] bool is_err() const { return std::holds_alternative<Error>(data_); }
+        explicit operator bool() const noexcept { return is_ok(); }
+
+        T* operator->() { return &unwrap(); }
+        const T* operator->() const { return &unwrap(); }
+
+        T& operator*() & { return unwrap(); }
+        const T& operator*() const & { return unwrap(); }
+        T&& operator*() && { return std::move(unwrap()); }
 
         T& unwrap() {
-            if (is_err()) {
-                throw std::runtime_error("Attempted to unwrap error result: " + std::get<Error>(data_).message);
-            }
-            return std::get<T>(data_);
+            return std::visit(
+              [&]<typename T0>(T0&& arg) -> T& {
+                  using Arg = std::decay_t<T0>;
+
+                  if constexpr (std::is_same_v<Arg, T>) {
+                      return arg;
+                  } else {
+                    throw std::runtime_error("Attempted to unwrap error result: " + arg.message);
+                  }
+              },
+            data_);
         }
 
         [[nodiscard]] const T& unwrap() const {
-            if (is_err()) {
-                throw std::runtime_error("Attempted to unwrap error result: " + std::get<Error>(data_).message);
-            }
-            return std::get<T>(data_);
+            return std::visit(
+              [&]<typename T0>(T0&& arg) -> const T& {
+                  using Arg = std::decay_t<T0>;
+
+                  if constexpr (std::is_same_v<Arg, T>) {
+                      return arg;
+                  } else {
+                    throw std::runtime_error("Attempted to unwrap error result: " + arg.message);
+                  }
+              },
+            data_);
         }
 
-        T unwrap_move() {
-            if (is_err()) {
-                throw std::runtime_error("Attempted to unwrap error result: " + std::get<Error>(data_).message);
-            }
-            return std::move(std::get<T>(data_));
+        T unwrap_move() const {
+            return std::visit(
+              [&]<typename T0>(T0&& arg) -> T {
+                  using Arg = std::decay_t<T0>;
+
+                  if constexpr (std::is_same_v<Arg, T>) {
+                      return std::move(std::forward<T0>(arg));
+                  } else {
+                    throw std::runtime_error("Attempted to unwrap error result: " + arg.message);
+                  }
+              },
+            data_);
         }
 
         [[nodiscard]] const Error& unwrap_err() const {
-            if (is_ok()) {
-                throw std::runtime_error("Attempted to unwrap_err on ok result");
-            }
-            return std::get<Error>(data_);
+            return std::visit(
+              [&]<typename T0>(T0&& arg) -> const Error& {
+                  using Arg = std::decay_t<T0>;
+
+                  if constexpr (std::is_same_v<Arg, Error>) {
+                      return arg;
+                  } else {
+                    throw std::runtime_error("Attempted to unwrap_err on ok result");
+                  }
+              },
+            data_);
         }
 
         template<typename FOk, typename FErr>
-        auto match(FOk&& ok_fn, FErr&& err_fn) {
-            using OkResult = decltype(ok_fn(std::declval<T>()));
-            using ErrResult = decltype(err_fn(std::declval<Error>()));
-            static_assert(std::is_same_v<OkResult, ErrResult>,
-                "Both handlers must return the same type");
+            requires std::invocable<FOk, T> &&
+                std::invocable<FErr, Error> &&
+                std::is_same_v<std::invoke_result_t<FOk, T>, std::invoke_result_t<FErr, Error>>
+        auto match(FOk&& ok_fn, FErr&& err_fn) const {
+            using ResultType = std::invoke_result_t<FOk, T>;
 
             return std::visit(
-                [&]<typename T0>(T0&& arg) -> OkResult {  // Explicit return type
+                [&]<typename T0>(T0&& arg) -> ResultType {  // Explicit return type
                     using Arg = std::decay_t<T0>;
                     if constexpr (std::is_same_v<Arg, T>) {
-                        return std::forward<FOk>(ok_fn)(std::forward<T0>(arg));
+                        return std::invoke(std::forward<FOk>(ok_fn), std::forward<T0>(arg));
                     } else {
-                        return std::forward<FErr>(err_fn)(std::forward<T0>(arg));
+                        return std::invoke(std::forward<FErr>(err_fn), std::forward<T0>(arg));
                     }
                 },
                 data_
             );
         }
 
-        [[nodiscard]] T unwrap_or(T default_val) const {
-            return is_ok() ? std::get<T>(data_) : default_val;
+        [[nodiscard]] T unwrap_or(const T& default_val) const {
+            return std::visit(
+              [&]<typename T0>(T0&& arg) -> T {
+                  using Arg = std::decay_t<T0>;
+
+                  if constexpr (std::is_same_v<Arg, T>) {
+                      return arg;
+                  } else {
+                      return default_val;
+                  }
+              },
+              data_
+            );
         }
 
-        template<typename F> requires std::invocable<F, Error>
-        T unwrap_or_else(F&& f) {
-            return is_ok() ? std::get<T>(data_) : f(std::get<Error>(data_));
+        template<typename F> requires std::invocable<F, Error> && std::is_same_v<std::invoke_result_t<F, Error>, T>
+        T unwrap_or_else(F&& f) const {
+            return std::visit(
+              [&]<typename T0>(T0&& arg) -> T {
+                using Arg = std::decay_t<T0>;
+
+                if constexpr (std::is_same_v<Arg, Error>) {
+                  return std::invoke(std::forward<F>(f), std::forward<T0>(arg));
+                } else {
+                  return arg;
+                }
+              },
+              data_);
         }
 
         std::optional<std::reference_wrapper<T>> try_unwrap() {
-            if (is_err()) return std::nullopt;
-            return std::ref(std::get<T>(data_));
+            return std::visit(
+              [&]<typename T0>(T0&& arg) -> std::optional<std::reference_wrapper<T>> {
+                using Arg = std::decay_t<T0>;
+                if constexpr (std::is_same_v<Arg, T>) {
+                  return std::ref(std::forward<T0>(arg));
+                } else {
+                  return std::nullopt;
+                }
+              },
+              data_);
         }
 
         [[nodiscard]] const Error& expect_err(const std::string& msg) const {
-            if (is_ok()) {
-                throw std::runtime_error(msg);
-            }
-            return std::get<Error>(data_);
+            return std::visit(
+              [&]<typename T0>(T0&& arg) -> const Error& {
+                using Arg = std::decay_t<T0>;
+
+                if constexpr (std::is_same_v<Arg, Error>) {
+                    return arg;
+                } else {
+                    throw std::runtime_error(msg);
+                }
+            },
+            data_);
         }
 
-        template<typename F>
-        auto and_then(F&& f) {
-            if (is_err()) return std::invoke_result_t<F, T>::err(std::get<Error>(data_));
-            return std::forward<F>(f)(std::get<T>(data_));
-        }
-
-        template<typename F>
-        auto map(F&& f) {
+        template<returns_result_for<T> F>
+        auto and_then(F&& f) const {
             using ResultType = std::invoke_result_t<F, T>;
 
-            if (is_err()) {
-                return Result<ResultType>::err(std::get<Error>(data_));
-            }
+            return std::visit(
+                [&]<typename T0>(T0&& arg) -> ResultType {
+                    using Arg = std::decay_t<T0>;
 
-            if constexpr (std::is_void_v<ResultType>) {
-                std::forward<F>(f)(std::get<T>(data_));
-                return Result<void>::ok();
-            } else {
-                return Result<ResultType>::ok(std::forward<F>(f)(std::get<T>(data_)));
-            }
+                    if constexpr (std::is_same_v<Arg, T>) {
+                        return std::invoke(std::forward<F>(f), std::forward<T0>(arg));
+                    } else {
+                        return ResultType::err(std::forward<T0>(arg));
+                    }
+                },
+                data_
+            );
         }
 
-        template<typename F>
-        Result<T> map_err(F&& f) {
-            if (is_ok()) return *this;
-            return Result<T>::err(f(std::get<Error>(data_))); // Apply `f` to the error
+        template<std::invocable<T> F>
+        auto map(F&& f) const {
+            using ResultType = std::invoke_result_t<F, T>;
+
+            return std::visit(
+              [&]<typename T0>(T0&& arg) -> Result<ResultType> {
+                  using Arg = std::decay_t<T0>;
+
+                  if constexpr (std::is_same_v<Arg, T>) {
+                      if constexpr (std::is_void_v<ResultType>) {
+                        std::invoke(std::forward<F>(f), std::forward<T0>(arg));
+                        return Result<void>::ok();
+                      } else {
+                          return Result<ResultType>::ok(
+                              std::invoke(std::forward<F>(f), std::forward<T0>(arg))
+                          );
+                      }
+                  } else {
+                      // Forward the error without copying
+                      return Result<ResultType>::err(std::forward<T0>(arg));
+                  }
+              },
+              data_);
         }
 
-        template<typename F>
-        Result<T> or_else(F&& f) {
-            if (is_ok()) return *this;
-            return f(std::get<Error>(data_));  // Get the error from the variant (we know it has value)
+        template<std::invocable<Error> F>
+        Result<T> map_err(F&& f) const {
+            return std::visit(
+                [&]<typename T0>(T0&& arg) -> Result<T> {
+                    using Arg = std::decay_t<T0>;
+
+                    if constexpr (std::is_same_v<Arg, T>) {
+                        return *this;
+                    } else {
+                        if constexpr (std::is_same_v<std::invoke_result_t<F, Error>, Error>) {
+                            return Result<T>::err(
+                                std::invoke(std::forward<F>(f), std::forward<T0>(arg))
+                            );
+                        } else {
+                            // if f return something convertible to Error
+                            return Result<T>::err(
+                                Error{std::invoke(std::forward<F>(f), std::forward<T0>(arg))}
+                            );
+                        }
+
+                    }
+                },
+                data_
+            );
+        }
+
+        template<returns_result_for<Error> F>
+        Result<T> or_else(F&& f) const {
+            return std::visit(
+                [&]<typename T0>(T0&& arg) -> Result<T> {
+                    using Arg = std::decay_t<T0>;
+
+                    if constexpr (std::is_same_v<Arg, T>) {
+                        return *this;
+                    } else {
+                        return std::invoke(std::forward<F>(f), std::forward<T0>(arg));
+                    }
+                },
+                data_
+            );
         }
 
         template<typename U>
         bool contains(const U& value) const {
-            return is_ok() && std::get<T>(data_) == value;
+            return std::visit(
+              [&]<typename T0>(T0&& arg) -> bool {
+                using Arg = std::decay_t<T0>;
+
+                if constexpr (std::is_same_v<Arg, T>) {
+                  return arg == value;
+                } else {
+                  return false;
+                }
+              },
+              data_
+            );
         }
 
         // Transform to std::optional
         [[nodiscard]] std::optional<T> to_optional() const {
-            if (is_err()) return std::nullopt;
-            return std::get<T>(data_);
+            return std::visit(
+              [&]<typename T0>(T0&& arg) -> std::optional<T> {
+                using Arg = std::decay_t<T0>;
+
+                if constexpr (std::is_same_v<Arg, T>) {
+                  return arg;
+                } else {
+                  return std::nullopt;
+                }
+              },
+              data_
+            );
         }
 
     private:
@@ -220,9 +383,9 @@ namespace neonfs {
         }
 
         template<typename F>
-        auto and_then(F&& f) {
+        auto and_then(F&& f) const {
             if (is_err()) return std::invoke_result_t<F>::err(std::get<Error>(data_));
-            return std::forward<F>(f)();
+            return std::invoke(std::forward<F>(f));
         }
 
         template<typename F>
@@ -234,10 +397,10 @@ namespace neonfs {
             }
 
             if constexpr (std::is_void_v<ResultType>) {
-                std::forward<F>(f)();
+                std::invoke(std::forward<F>(f));
                 return Result<void>::ok();
             } else {
-                return Result<ResultType>::ok(std::forward<F>(f)());
+                return Result<ResultType>::ok(std::invoke(std::forward<F>(f)));
             }
         }
 
