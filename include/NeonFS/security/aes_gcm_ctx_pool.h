@@ -4,6 +4,7 @@
 #include <NeonFS/core/result.hpp>
 #include <memory>
 #include <mutex>
+#include <condition_variable>
 #include <stack>
 #include <chrono>
 

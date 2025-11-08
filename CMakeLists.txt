@@ -1,11 +1,13 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.28)
 project(NeonFSLib)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # OpenSSL configuration
+if(MSVC)
 set(OPENSSL_ROOT_DIR "C:/Program Files/OpenSSL-Win64")
+endif()
 set(OPENSSL_USE_STATIC_LIBS TRUE)
 find_package(OpenSSL REQUIRED)
 
