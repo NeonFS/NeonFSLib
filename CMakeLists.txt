@@ -16,6 +16,7 @@ add_library(NeonFSLib STATIC
         src/security/aes_encryption_provider.cpp
         src/security/key_manager.cpp
         src/storage/block_storage.cpp
+        src/metadata/sqlite_metadata.cpp
         NeonFSLib.cpp)
 
 # Include directories
@@ -35,7 +36,7 @@ enable_testing()
 # Add tests subdirectory
 add_subdirectory(tests)
 
-option(PRODUCTION "Production Use" OFF)
+option(PRODUCTION "Production Use" ON)
 
 if (PRODUCTION)
     if(MSVC)

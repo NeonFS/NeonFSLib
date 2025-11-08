@@ -3,8 +3,8 @@
 #include <stdexcept>
 #include <string>
 #include <variant>
+#include <functional>
 
-#include "result.hpp"
 #include "types.h"
 
 namespace neonfs {
@@ -26,6 +26,224 @@ namespace neonfs {
 
     template<typename F>
     concept returns_result_for_void = std::invocable<F> && is_result_v<std::invoke_result_t<F>>;
+
+    // Specialization for Result<void>
+    template<>
+    class Result<void> {
+    public:
+        using value_type = void;
+        using error_type = Error;
+
+        [[nodiscard]] static Result<void> ok() {
+            return Result<void>(std::monostate{});
+        }
+
+        [[nodiscard]] static Result<void> err(const std::string& message, const int code = 0) {
+            return Result<void>(Error{message, code});
+        }
+
+        [[nodiscard]] static Result<void> err(Error error) {
+            return Result<void>(std::move(error));
+        }
+
+        [[nodiscard]] bool is_ok() const { return std::holds_alternative<std::monostate>(data_); }
+        [[nodiscard]] bool is_err() const { return std::holds_alternative<Error>(data_); }
+        explicit operator bool() const noexcept { return is_ok(); }
+
+        void unwrap() {
+            return std::visit(
+                [&]<typename T0>(T0&& arg) -> void {
+                    using Arg = std::decay_t<T0>;
+
+                    if constexpr (std::is_same_v<Arg, Error>) {
+                        throw std::runtime_error("Attempted to unwrap error result: " + arg.message);
+                    }
+                },
+            data_);
+        }
+
+        template<typename F> requires std::invocable<F, Error> && std::is_void_v<std::invoke_result_t<F, Error>>
+        void unwrap_or_else(F&& f) {
+            return std::visit(
+                [&]<typename T0>(T0&& arg) -> void {
+                    using Arg = std::decay_t<T0>;
+
+                    if constexpr (std::is_same_v<Arg, Error>) {
+                        std::invoke(std::forward<F>(f), arg);
+                    }
+                },
+            data_);
+        }
+
+        [[nodiscard]] std::optional<std::monostate> try_unwrap() const noexcept {
+            return std::visit(
+                [&]<typename T0>(T0 &&) -> std::optional<std::monostate> {
+                    using Arg = std::decay_t<T0>;
+                    if constexpr (std::is_same_v<Arg, Error>) {
+                        return std::nullopt;
+                    } else {
+                        return std::monostate{};
+                    }
+                },
+                data_
+            );
+        }
+
+        [[nodiscard]] const Error& unwrap_err() const {
+            return std::visit(
+                [&]<typename T0>(T0&& arg) -> const Error& {
+                    using Arg = std::decay_t<T0>;
+
+                    if constexpr (std::is_same_v<Arg, Error>) {
+                        return arg;
+                    } else {
+                        throw std::runtime_error("Attempted to unwrap_err on ok result");
+                    }
+                },
+            data_);
+        }
+
+        [[nodiscard]] const Error& expect_err(const std::string& msg) const {
+            return std::visit(
+                  [&]<typename T0>(T0&& arg) -> const Error& {
+                  using Arg = std::decay_t<T0>;
+
+                  if constexpr (std::is_same_v<Arg, Error>) {
+                      return arg;
+                  } else {
+                      throw std::runtime_error(msg);
+                  }
+            },
+            data_);
+        }
+
+        template<typename FOk, typename FErr>
+          requires std::invocable<FOk> &&
+              std::invocable<FErr, Error> &&
+              std::is_same_v<std::invoke_result_t<FOk>, std::invoke_result_t<FErr, Error>>
+        auto match(FOk&& ok_fn, FErr&& err_fn) {
+            using ResultType = std::invoke_result_t<FOk>;
+
+            return std::visit(
+                [&]<typename T0>(T0&& arg) -> ResultType {
+                    using Arg = std::decay_t<T0>;
+
+                    if constexpr (std::is_same_v<Arg, std::monostate>) {
+                        return std::invoke(std::forward<FOk>(ok_fn));
+                    } else {
+                        return std::invoke(std::forward<FErr>(err_fn), arg);
+                    }
+                },
+                data_
+            );
+        }
+
+        template<returns_result_for_void F>
+        auto and_then(F&& f) const {
+            using ResultType = std::invoke_result_t<F>;
+
+            return std::visit(
+                [&]<typename T0>(T0&& arg) -> ResultType {
+                    using Arg = std::decay_t<T0>;
+
+                    if constexpr (std::is_same_v<Arg, std::monostate>) {
+                        return std::invoke(std::forward<F>(f));
+                    } else {
+                        return ResultType::err(arg);
+                    }
+                },
+                data_
+            );
+        }
+
+        template<std::invocable F>
+        auto map(F&& f) {
+            using ResultType = std::invoke_result_t<F>;
+
+            return std::visit(
+                [&]<typename T0>(T0&& arg) -> Result<ResultType> {
+                    using Arg = std::decay_t<T0>;
+
+                    if constexpr (std::is_same_v<Arg, std::monostate>) {
+                        if constexpr (std::is_void_v<ResultType>) {
+                            std::invoke(std::forward<F>(f));
+                            return Result<void>::ok();
+                        } else {
+                            return Result<ResultType>::ok(
+                                std::invoke(std::forward<F>(f))
+                            );
+                        }
+                    } else {
+                        // Forward the error without copying
+                        return Result<ResultType>::err(std::forward<T0>(arg));
+                    }
+                },
+                data_
+            );
+        }
+
+        template<std::invocable<Error> F>
+        Result<void> map_err(F&& f) const {
+            return std::visit(
+                [&]<typename T0>(T0&& arg) -> Result<void> {
+                    using Arg = std::decay_t<T0>;
+
+                    if constexpr (std::is_same_v<Arg, std::monostate>) {
+                        return *this;
+                    } else {
+                        if constexpr (std::is_same_v<std::invoke_result_t<F, Error>, Error>) {
+                            return Result<void>::err(
+                                std::invoke(std::forward<F>(f), std::forward<T0>(arg))
+                            );
+                        } else {
+                            // if f return something convertible to Error
+                            return Result<void>::err(
+                                Error{std::invoke(std::forward<F>(f), arg)}
+                            );
+                        }
+                    }
+                },
+                data_
+            );
+        }
+
+        template<returns_result_for<Error> F>
+        Result<void> or_else(F&& f) const {
+            return std::visit(
+                [&]<typename T0>(T0&& arg) -> Result<void> {
+                    using Arg = std::decay_t<T0>;
+
+                    if constexpr (std::is_same_v<Arg, std::monostate>) {
+                        return *this;
+                    } else {
+                        return std::invoke(std::forward<F>(f), arg);
+                    }
+                },
+                data_
+            );
+        }
+
+        [[nodiscard]] std::optional<std::monostate> to_optional() const noexcept {
+            return std::visit(
+                [&]<typename T0>(T0 &&) -> std::optional<std::monostate> {
+                    using Arg = std::decay_t<T0>;
+
+                    if constexpr (std::is_same_v<Arg, std::monostate>) {
+                        return std::monostate{};
+                    } else {
+                        return std::nullopt;
+                    }
+                },
+              data_
+            );
+        }
+
+    private:
+        explicit Result(std::monostate) : data_(std::monostate{}) {}
+        explicit Result(Error error) : data_(std::move(error)) {}
+
+        std::variant<std::monostate, Error> data_;
+    };
 
     template<typename T>
     class Result {
@@ -317,223 +535,5 @@ namespace neonfs {
         explicit Result(Error error) : data_(std::move(error)) {}
 
         std::variant<T, Error> data_;
-    };
-
-    // Specialization for Result<void>
-    template<>
-    class Result<void> {
-    public:
-        using value_type = void;
-        using error_type = Error;
-
-        [[nodiscard]] static Result<void> ok() {
-            return Result<void>(std::monostate{});
-        }
-
-        [[nodiscard]] static Result<void> err(const std::string& message, const int code = 0) {
-            return Result<void>(Error{message, code});
-        }
-
-        [[nodiscard]] static Result<void> err(Error error) {
-            return Result<void>(std::move(error));
-        }
-
-        [[nodiscard]] bool is_ok() const { return std::holds_alternative<std::monostate>(data_); }
-        [[nodiscard]] bool is_err() const { return std::holds_alternative<Error>(data_); }
-        explicit operator bool() const noexcept { return is_ok(); }
-
-        void unwrap() {
-            return std::visit(
-                [&]<typename T0>(T0&& arg) -> void {
-                    using Arg = std::decay_t<T0>;
-
-                    if constexpr (std::is_same_v<Arg, Error>) {
-                        throw std::runtime_error("Attempted to unwrap error result: " + arg.message);
-                    }
-                },
-            data_);
-        }
-
-        template<typename F> requires std::invocable<F, Error> && std::is_void_v<std::invoke_result_t<F, Error>>
-        void unwrap_or_else(F&& f) {
-            return std::visit(
-                [&]<typename T0>(T0&& arg) -> void {
-                    using Arg = std::decay_t<T0>;
-
-                    if constexpr (std::is_same_v<Arg, Error>) {
-                        std::invoke(std::forward<F>(f), arg);
-                    }
-                },
-            data_);
-        }
-
-        [[nodiscard]] std::optional<std::monostate> try_unwrap() const noexcept {
-            return std::visit(
-                [&]<typename T0>(T0&& arg) -> std::optional<std::monostate> {
-                    using Arg = std::decay_t<T0>;
-                    if constexpr (std::is_same_v<Arg, Error>) {
-                        return std::nullopt;
-                    } else {
-                        return std::monostate{};
-                    }
-                },
-                data_
-            );
-        }
-
-        [[nodiscard]] const Error& unwrap_err() const {
-            return std::visit(
-                [&]<typename T0>(T0&& arg) -> const Error& {
-                    using Arg = std::decay_t<T0>;
-
-                    if constexpr (std::is_same_v<Arg, Error>) {
-                        return arg;
-                    } else {
-                        throw std::runtime_error("Attempted to unwrap_err on ok result");
-                    }
-                },
-            data_);
-        }
-
-        [[nodiscard]] const Error& expect_err(const std::string& msg) const {
-            return std::visit(
-                  [&]<typename T0>(T0&& arg) -> const Error& {
-                  using Arg = std::decay_t<T0>;
-
-                  if constexpr (std::is_same_v<Arg, Error>) {
-                      return arg;
-                  } else {
-                      throw std::runtime_error(msg);
-                  }
-            },
-            data_);
-        }
-
-        template<typename FOk, typename FErr>
-          requires std::invocable<FOk> &&
-              std::invocable<FErr, Error> &&
-              std::is_same_v<std::invoke_result_t<FOk>, std::invoke_result_t<FErr, Error>>
-        auto match(FOk&& ok_fn, FErr&& err_fn) {
-            using ResultType = std::invoke_result_t<FOk>;
-
-            return std::visit(
-                [&]<typename T0>(T0&& arg) -> ResultType {
-                    using Arg = std::decay_t<T0>;
-
-                    if constexpr (std::is_same_v<Arg, std::monostate>) {
-                        return std::invoke(std::forward<FOk>(ok_fn));
-                    } else {
-                        return std::invoke(std::forward<FErr>(err_fn), arg);
-                    }
-                },
-                data_
-            );
-        }
-
-        template<returns_result_for_void F>
-        auto and_then(F&& f) const {
-            using ResultType = std::invoke_result_t<F>;
-
-            return std::visit(
-                [&]<typename T0>(T0&& arg) -> ResultType {
-                    using Arg = std::decay_t<T0>;
-
-                    if constexpr (std::is_same_v<Arg, std::monostate>) {
-                        return std::invoke(std::forward<F>(f));
-                    } else {
-                        return ResultType::err(arg);
-                    }
-                },
-                data_
-            );
-        }
-
-        template<std::invocable F>
-        auto map(F&& f) {
-            using ResultType = std::invoke_result_t<F>;
-
-            return std::visit(
-                [&]<typename T0>(T0&& arg) -> Result<ResultType> {
-                    using Arg = std::decay_t<T0>;
-
-                    if constexpr (std::is_same_v<Arg, std::monostate>) {
-                        if constexpr (std::is_void_v<ResultType>) {
-                            std::invoke(std::forward<F>(f));
-                            return Result<void>::ok();
-                        } else {
-                            return Result<ResultType>::ok(
-                                std::invoke(std::forward<F>(f))
-                            );
-                        }
-                    } else {
-                        // Forward the error without copying
-                        return Result<ResultType>::err(std::forward<T0>(arg));
-                    }
-                },
-                data_
-            );
-        }
-
-        template<std::invocable<Error> F>
-        Result<void> map_err(F&& f) const {
-            return std::visit(
-                [&]<typename T0>(T0&& arg) -> Result<void> {
-                    using Arg = std::decay_t<T0>;
-
-                    if constexpr (std::is_same_v<Arg, std::monostate>) {
-                        return *this;
-                    } else {
-                        if constexpr (std::is_same_v<std::invoke_result_t<F, Error>, Error>) {
-                            return Result<void>::err(
-                                std::invoke(std::forward<F>(f), std::forward<T0>(arg))
-                            );
-                        } else {
-                            // if f return something convertible to Error
-                            return Result<void>::err(
-                                Error{std::invoke(std::forward<F>(f), arg)}
-                            );
-                        }
-                    }
-                },
-                data_
-            );
-        }
-
-        template<returns_result_for<Error> F>
-        Result<void> or_else(F&& f) const {
-            return std::visit(
-                [&]<typename T0>(T0&& arg) -> Result<void> {
-                    using Arg = std::decay_t<T0>;
-
-                    if constexpr (std::is_same_v<Arg, std::monostate>) {
-                        return *this;
-                    } else {
-                        return std::invoke(std::forward<F>(f), arg);
-                    }
-                },
-                data_
-            );
-        }
-
-        [[nodiscard]] std::optional<std::monostate> to_optional() const noexcept {
-            return std::visit(
-                [&]<typename T0>(T0&& arg) -> std::optional<std::monostate> {
-                    using Arg = std::decay_t<T0>;
-
-                    if constexpr (std::is_same_v<Arg, std::monostate>) {
-                        return std::monostate{};
-                    } else {
-                        return std::nullopt;
-                    }
-                },
-              data_
-            );
-        }
-
-    private:
-        explicit Result(std::monostate) : data_(std::monostate{}) {}
-        explicit Result(Error error) : data_(std::move(error)) {}
-
-        std::variant<std::monostate, Error> data_;
     };
 } // namespace neonfs

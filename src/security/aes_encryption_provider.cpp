@@ -17,7 +17,7 @@ neonfs::Result<std::vector<uint8_t>> neonfs::security::AESEncryptionProvider::en
     // Auto-generate IV if empty
     if (outIV.empty()) {
         outIV.resize(iv_size());
-        if (RAND_bytes(outIV.data(), outIV.size()) != 1) {
+        if (RAND_bytes(outIV.data(), static_cast<int>(outIV.size())) != 1) {
             return Result<std::vector<uint8_t>>::err("Failed to generate secure IV");
         }
     }

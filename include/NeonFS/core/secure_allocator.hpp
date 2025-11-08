@@ -23,7 +23,7 @@ namespace neonfs {
 	}
 
 
-	template<typename T>
+	template<typename T> requires std::is_trivially_destructible_v<T>
 	class secure_allocator
 	{
 		static_assert(std::is_trivially_destructible_v<T>,
