@@ -52,11 +52,13 @@ neonfs::Result<void> neonfs::storage::BlockStorage::unmount() {
 
     filestream.flush();
     filestream.close();
+
+    // Reset state even if close failed
+    is_mounted = false;
     if (filestream.is_open()) {
         return Result<void>::err("Failed to close storage file", -2);
     }
 
-    is_mounted = false;
     return Result<void>::ok();
 }
 
@@ -80,7 +82,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::create(const StorageConfig& 
     // Write empty blocks
     const std::vector<uint8_t> empty_block(config.block_size, 0);
     for (size_t i = 0; i < block_count; i++) {
-        c_filestream.write(reinterpret_cast<const char*>(empty_block.data()), empty_block.size());
+        c_filestream.write(reinterpret_cast<const char*>(empty_block.data()), static_cast<int64_t>(empty_block.size()));
     }
     c_filestream.flush();
     c_filestream.close();
@@ -98,13 +100,13 @@ neonfs::Result<std::vector<unsigned char> > neonfs::storage::BlockStorage::readB
     }
 
     const uint64_t offset = blockID * block_size_;
-    filestream.seekg(offset, std::ios::beg);
+    filestream.seekg(static_cast<int64_t>(offset), std::ios::beg);
     if (!filestream.good()) {
         return Result<std::vector<uint8_t>>::err("Failed to seek to block position", -3);
     }
 
     std::vector<uint8_t> data(block_size_);
-    filestream.read(reinterpret_cast<char*>(data.data()), block_size_);
+    filestream.read(reinterpret_cast<char*>(data.data()), static_cast<int64_t>(block_size_));
     if (filestream.gcount() != static_cast<std::streamsize>(block_size_)) {
         return Result<std::vector<uint8_t>>::err("Incomplete block read", -4);
     }
@@ -112,7 +114,7 @@ neonfs::Result<std::vector<unsigned char> > neonfs::storage::BlockStorage::readB
     return Result<std::vector<uint8_t>>::ok(std::move(data));
 }
 
-neonfs::Result<void> neonfs::storage::BlockStorage::writeBlock(const uint64_t blockID, std::vector<uint8_t> &data) {
+neonfs::Result<void> neonfs::storage::BlockStorage::writeBlock(const uint64_t blockID, std::vector<uint8_t>& data) {
     if (!is_mounted) {
         return Result<void>::err("Storage is not mounted", -1);
     }
@@ -122,12 +124,12 @@ neonfs::Result<void> neonfs::storage::BlockStorage::writeBlock(const uint64_t bl
     }
 
     if (data.size() > block_size_ ) {
-        return Result<void>::err("Data size exceeds block size", -3);
+      return Result<void>::err("Data size exceeds block size", -3);
     }
 
     if (data.size() < block_size_) {
-        std::vector<uint8_t> padding(block_size_ - data.size(), 0);
-        data.insert(data.end(), padding.begin(), padding.end());
+      std::vector<uint8_t> padding(block_size_ - data.size(), 0);
+      data.insert(data.end(), padding.begin(), padding.end());
     }
 
     if (data.size() > block_size_) {
@@ -141,12 +143,12 @@ neonfs::Result<void> neonfs::storage::BlockStorage::writeBlock(const uint64_t bl
     {
         const uint64_t offset = blockID * block_size_;
         std::lock_guard lock(file_stream_mutex);
-        filestream.seekp(offset, std::ios::beg);
+        filestream.seekp(static_cast<int64_t>(offset), std::ios::beg);
         if (!filestream.good()) {
             return Result<void>::err("Failed to seek to block position", -4);
         }
 
-        filestream.write(reinterpret_cast<const char*>(data.data()), block_size_);
+        filestream.write(reinterpret_cast<const char*>(data.data()), static_cast<int64_t>(block_size_));
         if (!filestream.good()) {
             return Result<void>::err("Failed to write block: possible disk full", -5);
         }
@@ -185,7 +187,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::resizeStorage(const uint64_t
         return Result<void>::err("Storage is not mounted", -1);
     }
 
-    // Flush any pending writes before resizing
+    // Flush any pending writings before resizing
     filestream.flush();
     if (!filestream) {
         return Result<void>::err("Flush failed before resize", -3);
@@ -195,7 +197,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::resizeStorage(const uint64_t
         filestream.seekp(0, std::ios::end);
         const std::vector<uint8_t> empty_block(block_size_, 0);
         for (uint64_t i = total_blocks_; i < newBlockCount; i++) {
-            filestream.write(reinterpret_cast<const char*>(empty_block.data()), block_size_);
+            filestream.write(reinterpret_cast<const char*>(empty_block.data()), static_cast<int64_t>(block_size_));
             if (!filestream) {
                 return Result<void>::err("Failed to write new blocks during resize", -4);
             }
@@ -207,7 +209,7 @@ neonfs::Result<void> neonfs::storage::BlockStorage::resizeStorage(const uint64_t
         std::error_code ec;
         std::filesystem::resize_file(path, newBlockCount * block_size_, ec);
         if (ec) {
-            // Attempt to reopen the file even if resize failed to restore state
+            // Attempt to reopen the file even if resize failed to restore the state
             filestream.open(path, std::ios::binary | std::ios::in | std::ios::out);
             return Result<void>::err("Failed to resize storage file: " + ec.message(), -2);
         }

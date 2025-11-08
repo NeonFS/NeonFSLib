@@ -1,8 +1,11 @@
 #pragma once
 #include <NeonFS/security/aes_gcm_ctx.h>
+#include <NeonFS/core/types.h>
+#include <NeonFS/core/result.hpp>
 #include <memory>
 #include <mutex>
 #include <stack>
+#include <chrono>
 
 namespace neonfs::security {
     class AESGCMCtxPool : public std::enable_shared_from_this<AESGCMCtxPool> {
@@ -29,7 +32,9 @@ namespace neonfs::security {
         explicit AESGCMCtxPool(size_t maxSize);
         static std::shared_ptr<AESGCMCtxPool> create(size_t maxSize);
         Handle acquire();
+        Result<Handle> acquire(std::chrono::milliseconds timeout);
         size_t availableCount();
+        PoolStats getStats();
     private:
         void release(std::unique_ptr<AESGCMCtx> ctx);
 

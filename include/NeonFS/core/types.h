@@ -38,6 +38,13 @@ namespace neonfs {
     template<typename Key, typename T, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
     using secure_unordered_map = std::unordered_map<Key, T, Hash, KeyEqual, secure_allocator<std::pair<const Key, T>>>;
 
+    struct PoolStats {
+        size_t current_size;
+        size_t available;
+        size_t max_size;
+        size_t total_created;
+    };
+
     enum class StorageErrorCode : int {
         SUCCESS = 0,
         INVALID_BLOCK_ID,           // Block ID out of range
@@ -45,11 +52,11 @@ namespace neonfs {
         STORAGE_FULL,               // No space available
         IO_ERROR,                   // Low-level I/O error
         PERMISSION_DENIED,          // Insufficient permissions
-        NOT_INITIALIZED,            // Provider not initialized
+        NOT_INITIALIZED,            // Provider isn't initialized
         ALREADY_EXISTS,             // Block already exists
         TRANSACTION_ERROR,          // Transaction-related error
         INVALID_PARAMETER,          // Invalid input parameters
-        UNSUPPORTED_OPERATION,      // Operation not supported by this provider
+        UNSUPPORTED_OPERATION,      // Operation is not supported by this provider
         TIMEOUT,                    // Operation timed out
         CORRUPTION_DETECTED         // Data corruption detected
     };

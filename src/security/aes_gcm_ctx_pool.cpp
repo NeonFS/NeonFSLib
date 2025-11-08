@@ -39,21 +39,41 @@ std::shared_ptr<neonfs::security::AESGCMCtxPool> neonfs::security::AESGCMCtxPool
 
 neonfs::security::AESGCMCtxPool::Handle neonfs::security::AESGCMCtxPool::acquire() {
     std::unique_lock lock(mutex);
+
     if (!pool.empty()) {
         std::unique_ptr<AESGCMCtx> ctx = std::move(pool.top());
         pool.pop();
         return {shared_from_this(), std::move(ctx)};
     }
+
     if (currentSize < maxPoolSize) {
         ++currentSize;
         lock.unlock();
         auto newCtx = std::make_unique<AESGCMCtx>();
         return {shared_from_this(), std::move(newCtx)};
     }
+
     condVar.wait(lock, [this] { return !pool.empty(); });
     std::unique_ptr<AESGCMCtx> ctx = std::move(pool.top());
     pool.pop();
     return {shared_from_this(), std::move(ctx)};
+}
+
+neonfs::Result<neonfs::security::AESGCMCtxPool::Handle> neonfs::security::AESGCMCtxPool::acquire(std::chrono::milliseconds timeout) {
+    std::unique_lock lock(mutex);
+
+    if (!pool.empty() || currentSize < maxPoolSize) {
+        lock.unlock();
+        return Result<Handle>::ok(acquire()); // Use existing logic for immediate acquisition
+    }
+
+    if (condVar.wait_for(lock, timeout, [this] { return !pool.empty(); })) {
+        std::unique_ptr<AESGCMCtx> ctx = std::move(pool.top());
+        pool.pop();
+        return Result<Handle>::ok({shared_from_this(), std::move(ctx)});
+    }
+
+    return Result<Handle>::err("Could not acquire handle within timeout period");
 }
 
 void neonfs::security::AESGCMCtxPool::release(std::unique_ptr<AESGCMCtx> ctx) {
@@ -66,4 +86,15 @@ void neonfs::security::AESGCMCtxPool::release(std::unique_ptr<AESGCMCtx> ctx) {
 size_t neonfs::security::AESGCMCtxPool::availableCount() {
     std::lock_guard lock(mutex);
     return pool.size();
+}
+
+neonfs::PoolStats neonfs::security::AESGCMCtxPool::getStats() {
+    std::lock_guard lock(mutex);
+
+    return {
+        .current_size = currentSize,
+        .available = pool.size(),
+        .max_size = maxPoolSize,
+        .total_created = currentSize
+    };
 }
